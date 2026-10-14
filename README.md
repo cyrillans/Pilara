@@ -213,8 +213,4 @@ Pilara dikembangkan oleh tim yang terdiri dari:
 - Muhammad Adli Humaidi 241401103
 - Resti Nadia Marpaung 241401139
 
-> Jika diperlukan, silakan lengkapi nama anggota tim sesuai dengan struktur kelompok proyek Anda.
-
----
-
 Pilara adalah proyek yang menggabungkan teknologi mobile modern dengan kecerdasan buatan untuk mendorong perubahan perilaku masyarakat dalam membuang dan memilah sampah dengan lebih bijak.
