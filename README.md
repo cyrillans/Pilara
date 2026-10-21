@@ -101,17 +101,17 @@ Pilara menggunakan pendekatan Machine Learning berbasis model TensorFlow Lite un
 - Keberhasilan model diukur berdasarkan sejauh mana model mampu membedakan sampah sesuai kategori dengan hasil yang stabil dan konsisten.
 - Hasil evaluasi juga menjadi dasar untuk peningkatan kualitas model di pengembangan berikutnya.
 
-Tampilan Aplikasi
+### Tampilan Aplikasi
 
 Berikut adalah area tampilan utama yang terdapat pada aplikasi Pilara:
 
-Home Screen
+### Home Screen 🏠 
 
 <p align="center">
 <img src="https://github.com/user-attachments/assets/2b5e3ebe-05b6-4122-b599-16cb11b529b3" alt="Home Screen Pilara" width="280" />
 </p>
 
-Pilah Sampah Screen
+### Pilah Sampah Screen ♻️ 
 
 <p align="center">
 <img src="https://github.com/user-attachments/assets/55ef2534-d7c0-4b02-9c56-c29651703831" alt="Pilah Sampah Screen 1" width="280" />
@@ -119,13 +119,13 @@ Pilah Sampah Screen
 <img src="https://github.com/user-attachments/assets/30677e5a-6b8a-4dea-b06e-91726ed0bcf3" alt="Pilah Sampah Screen 2" width="280" />
 </p>
 
-Kamera / Scan Sampah Screen
+### Kamera / Scan Sampah Screen 📷
 
 <p align="center">
 <img src="https://github.com/user-attachments/assets/356360d4-0450-45cb-ba28-d8a9ac82dce2" alt="Kamera / Scan Sampah Screen" width="280" />
 </p>
 
-Riwayat Screen
+### Riwayat Screen 🕘
 
 <p align="center">
 <img src="https://github.com/user-attachments/assets/57d9ca80-d3bd-49c0-9d4e-6b1e87ef0217" alt="Riwayat Screen 1" width="280" />
@@ -133,7 +133,7 @@ Riwayat Screen
 <img src="https://github.com/user-attachments/assets/e2e15cc9-975d-4a1f-b631-38f8bd70da51" alt="Riwayat Screen 2" width="280" />
 </p>
 
-Profile Screen
+### Profile Screen 👤
 
 <p align="center">
 <img src="https://github.com/user-attachments/assets/48c73007-3d46-4538-b264-8c3e7f3d97f8" alt="Profile Screen 1" width="280" />
@@ -141,7 +141,7 @@ Profile Screen
 <img src="https://github.com/user-attachments/assets/b3fe569c-1536-440a-9039-7853edb955b9" alt="Profile Screen 2" width="280" />
 </p>
 
-Artikel Screen
+### Artikel Screen 📖📖📖
 
 <p align="center">
 <img src="https://github.com/user-attachments/assets/3d14e8de-23e3-41f1-94c5-909a4913e1d4" alt="Artikel Screen Pilara" width="280" />
