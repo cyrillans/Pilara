@@ -105,7 +105,8 @@ Pilara menggunakan pendekatan Machine Learning berbasis model TensorFlow Lite un
 
 Berikut adalah area tampilan utama yang terdapat pada aplikasi Pilara:
 
-- Home Screen
+- Home screen
+- <img width="720" height="1600" alt="WhatsApp Image 2026-10-21 at 20 54 41" src="https://github.com/user-attachments/assets/2b5e3ebe-05b6-4122-b599-16cb11b529b3" />
 - Pilah Sampah Screen
 - Kamera / Scan Sampah Screen
 - Riwayat Screen
