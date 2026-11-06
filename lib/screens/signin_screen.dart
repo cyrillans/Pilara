@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+
 import 'signup_screen.dart';
 import 'home_screen.dart';
+import '../services/pilara_api.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -14,6 +16,7 @@ class _SignInScreenState extends State<SignInScreen> {
   final passwordController = TextEditingController();
 
   bool isPasswordVisible = false;
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
@@ -22,9 +25,9 @@ class _SignInScreenState extends State<SignInScreen> {
     super.dispose();
   }
 
-  void login() {
+  Future<void> login() async {
     final email = emailController.text.trim();
-    final password = passwordController.text.trim();
+    final password = passwordController.text;
 
     // Validasi input
     if (email.isEmpty || password.isEmpty) {
@@ -36,14 +39,28 @@ class _SignInScreenState extends State<SignInScreen> {
       return;
     }
 
-    // Jika input sudah diisi,
-    // masuk ke Home Screen
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const HomeScreen(),
-      ),
-    );
+    setState(() {
+      _isSubmitting = true;
+    });
+    try {
+      await PilaraApi.instance.login(email: email, password: password);
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
   }
 
   @override
@@ -145,14 +162,20 @@ class _SignInScreenState extends State<SignInScreen> {
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: login,
-                    child: const Text(
-                      'SIGN IN',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    onPressed: _isSubmitting ? null : login,
+                    child: _isSubmitting
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text(
+                            'SIGN IN',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                   ),
                 ),
 

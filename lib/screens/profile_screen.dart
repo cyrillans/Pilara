@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../services/pilara_api.dart';
+import 'signin_screen.dart';
+
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -9,6 +12,34 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _notificationEnabled = true;
+  AppUser? _user;
+  int? _points;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      final user = await PilaraApi.instance.currentUser();
+      if (user == null) {
+        throw const ApiException('Sesi berakhir. Silakan masuk kembali.');
+      }
+      final activitySummary = await PilaraApi.instance.fetchActivities();
+      if (!mounted) return;
+      setState(() {
+        _user = user;
+        _points = activitySummary.totalPoints;
+      });
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,41 +58,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildHeader(),
-
               const SizedBox(height: 24),
-
               _buildProfileCard(),
-
               const SizedBox(height: 26),
-
               _buildSectionTitle('Akun'),
-
               const SizedBox(height: 10),
-
               _buildAccountSection(),
-
               const SizedBox(height: 24),
-
               _buildSectionTitle('Preferensi'),
-
               const SizedBox(height: 10),
-
               _buildPreferenceSection(),
-
               const SizedBox(height: 24),
-
               _buildSectionTitle('Bantuan & Informasi'),
-
               const SizedBox(height: 10),
-
               _buildHelpSection(),
-
               const SizedBox(height: 26),
-
               _buildLogoutButton(),
-
               const SizedBox(height: 18),
-
               Center(
                 child: Column(
                   children: [
@@ -123,7 +136,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
         ),
-
         Container(
           width: 44,
           height: 44,
@@ -188,7 +200,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       color: Color(0xFF1E8E5A),
                     ),
                   ),
-
                   Positioned(
                     right: 0,
                     bottom: 1,
@@ -212,25 +223,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ],
               ),
-
               const SizedBox(width: 15),
-
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Cyrilla',
+                      _user?.name ?? 'Memuat profil...',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
                         color: Color(0xFF17231D),
                       ),
                     ),
-
                     SizedBox(height: 4),
-
-                    Text(
+                    const Text(
                       'Eco Enthusiast 🌱',
                       style: TextStyle(
                         fontSize: 12,
@@ -238,22 +245,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-
                     SizedBox(height: 7),
-
                     Row(
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.email_outlined,
                           size: 13,
                           color: Color(0xFF8A948E),
                         ),
                         SizedBox(width: 4),
-                        Text(
-                          'cyrilla@email.com',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Color(0xFF8A948E),
+                        Flexible(
+                          child: Text(
+                            _user?.email ?? ' ',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Color(0xFF8A948E),
+                            ),
                           ),
                         ),
                       ],
@@ -263,50 +270,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ],
           ),
-
           const SizedBox(height: 20),
-
           Container(
             height: 1,
             color: const Color(0xFFEEF1EF),
           ),
-
           const SizedBox(height: 17),
-
           Row(
             children: [
               Expanded(
                 child: _profileStat(
                   icon: Icons.stars_rounded,
-                  value: '1.250',
+                  value: _points?.toString() ?? '—',
                   label: 'Poin',
                 ),
               ),
-
               Container(
                 width: 1,
                 height: 38,
                 color: const Color(0xFFE8ECE9),
               ),
-
               Expanded(
                 child: _profileStat(
                   icon: Icons.workspace_premium_rounded,
-                  value: 'Level 3',
+                  value: '—',
                   label: 'Level',
                 ),
               ),
-
               Container(
                 width: 1,
                 height: 38,
                 color: const Color(0xFFE8ECE9),
               ),
-
               Expanded(
                 child: _profileStat(
                   icon: Icons.local_fire_department_rounded,
-                  value: '5 hari',
+                  value: '—',
                   label: 'Streak',
                 ),
               ),
@@ -333,9 +332,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           size: 19,
           color: const Color(0xFF1E8E5A),
         ),
-
         const SizedBox(height: 6),
-
         Text(
           value,
           style: const TextStyle(
@@ -344,9 +341,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             color: Color(0xFF17231D),
           ),
         ),
-
         const SizedBox(height: 2),
-
         Text(
           label,
           style: TextStyle(
@@ -390,9 +385,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _showComingSoon('Edit Profil');
           },
         ),
-
         _buildDivider(),
-
         _buildMenuItem(
           icon: Icons.email_outlined,
           iconBackground: const Color(0xFFEAF1FB),
@@ -403,9 +396,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _showComingSoon('Email & Akun');
           },
         ),
-
         _buildDivider(),
-
         _buildMenuItem(
           icon: Icons.location_on_outlined,
           iconBackground: const Color(0xFFFFF1E3),
@@ -428,9 +419,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return _buildMenuContainer(
       children: [
         _buildNotificationItem(),
-
         _buildDivider(),
-
         _buildMenuItem(
           icon: Icons.dark_mode_outlined,
           iconBackground: const Color(0xFFF0ECF9),
@@ -441,9 +430,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _showComingSoon('Pengaturan Tampilan');
           },
         ),
-
         _buildDivider(),
-
         _buildMenuItem(
           icon: Icons.language_rounded,
           iconBackground: const Color(0xFFE9F2F8),
@@ -483,9 +470,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               size: 21,
             ),
           ),
-
           const SizedBox(width: 12),
-
           const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -498,9 +483,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     color: Color(0xFF17231D),
                   ),
                 ),
-
                 SizedBox(height: 3),
-
                 Text(
                   'Pengingat dan update aktivitas',
                   style: TextStyle(
@@ -511,7 +494,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
-
           Switch.adaptive(
             value: _notificationEnabled,
             activeColor: Color(0xFF1E8E5A),
@@ -543,9 +525,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _showComingSoon('Pusat Bantuan');
           },
         ),
-
         _buildDivider(),
-
         _buildMenuItem(
           icon: Icons.shield_outlined,
           iconBackground: const Color(0xFFEFF3EC),
@@ -556,9 +536,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _showComingSoon('Privasi & Keamanan');
           },
         ),
-
         _buildDivider(),
-
         _buildMenuItem(
           icon: Icons.info_outline_rounded,
           iconBackground: const Color(0xFFF0F0F0),
@@ -630,13 +608,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 size: 21,
               ),
             ),
-
             const SizedBox(width: 12),
-
             Expanded(
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     title,
@@ -646,9 +621,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       color: Color(0xFF17231D),
                     ),
                   ),
-
                   const SizedBox(height: 3),
-
                   Text(
                     subtitle,
                     maxLines: 1,
@@ -661,7 +634,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
             ),
-
             const Icon(
               Icons.chevron_right_rounded,
               color: Color(0xFFABB3AE),
@@ -716,9 +688,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               size: 19,
               color: Color(0xFFD9534F),
             ),
-
             SizedBox(width: 8),
-
             Text(
               'Keluar dari Akun',
               style: TextStyle(
@@ -841,9 +811,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
-
-                // Nanti diarahkan ke halaman login
-                // menggunakan AppRouter.signin.
+                _logout();
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFD9534F),
@@ -860,6 +828,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         );
       },
+    );
+  }
+
+  Future<void> _logout() async {
+    await PilaraApi.instance.clearSession();
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const SignInScreen()),
+      (_) => false,
     );
   }
 }

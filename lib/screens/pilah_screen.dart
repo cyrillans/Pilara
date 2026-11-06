@@ -6,7 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../data/dummy_pilah.dart';
+import '../services/pilara_api.dart';
 
 class PilahScreen extends StatefulWidget {
   const PilahScreen({super.key});
@@ -29,6 +29,9 @@ class _PilahScreenState extends State<PilahScreen> {
 
   bool _isLoadingLocation = true;
   bool _locationReady = false;
+  bool _isLoadingPlaces = true;
+  String? _placesError;
+  List<WastePoint> _places = [];
 
   String _selectedCategory = 'Semua';
   String _searchQuery = '';
@@ -52,6 +55,7 @@ class _PilahScreenState extends State<PilahScreen> {
       });
     });
 
+    _loadWastePoints();
     _getCurrentLocation();
   }
 
@@ -60,6 +64,24 @@ class _PilahScreenState extends State<PilahScreen> {
     _searchController.dispose();
     _mapController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadWastePoints() async {
+    try {
+      final places = await PilaraApi.instance.fetchWastePoints();
+      if (!mounted) return;
+      setState(() {
+        _places = places;
+        _placesError = null;
+        _isLoadingPlaces = false;
+      });
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _placesError = error.message;
+        _isLoadingPlaces = false;
+      });
+    }
   }
 
   // ============================================================
@@ -194,9 +216,8 @@ class _PilahScreenState extends State<PilahScreen> {
   // FILTER
   // ============================================================
 
-  List<WastePointDummy> get _filteredPlaces {
-    List<WastePointDummy> result =
-        List.from(dummyWastePoints);
+  List<WastePoint> get _filteredPlaces {
+    List<WastePoint> result = List.from(_places);
 
     if (_selectedCategory != 'Semua') {
       result = result.where((place) {
@@ -247,7 +268,14 @@ class _PilahScreenState extends State<PilahScreen> {
   // DISTANCE
   // ============================================================
 
-  String _getDistance(WastePointDummy place) {
+  IconData _iconFor(String name) => switch (name) {
+    'eco' => Icons.eco_rounded,
+    'warning' => Icons.warning_amber_rounded,
+    'delete' => Icons.delete_sweep_rounded,
+    _ => Icons.recycling_rounded,
+  };
+
+  String _getDistance(WastePoint place) {
     if (!_locationReady) {
       return 'Lokasi belum tersedia';
     }
@@ -272,7 +300,7 @@ class _PilahScreenState extends State<PilahScreen> {
   // ============================================================
 
   Future<void> _openRoute(
-    WastePointDummy place,
+    WastePoint place,
   ) async {
     final destination =
         '${place.latitude},${place.longitude}';
@@ -344,7 +372,18 @@ class _PilahScreenState extends State<PilahScreen> {
                 places.length,
               ),
             ),
-            if (places.isEmpty)
+            if (_isLoadingPlaces)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.all(32),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              )
+            else if (_placesError != null)
+              SliverToBoxAdapter(
+                child: _buildPlacesError(),
+              )
+            else if (places.isEmpty)
               SliverToBoxAdapter(
                 child: _buildEmptyState(),
               )
@@ -375,6 +414,31 @@ class _PilahScreenState extends State<PilahScreen> {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildPlacesError() {
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          Text(
+            _placesError!,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.red),
+          ),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _isLoadingPlaces = true;
+              });
+              _loadWastePoints();
+            },
+            child: const Text('Coba lagi'),
+          ),
+        ],
       ),
     );
   }
@@ -626,9 +690,7 @@ class _PilahScreenState extends State<PilahScreen> {
     );
   }
 
-  Widget _buildMap(
-    List<WastePointDummy> places,
-  ) {
+  Widget _buildMap(List<WastePoint> places) {
     final markers = <Marker>[];
 
     // Marker lokasi pengguna.
@@ -713,7 +775,7 @@ class _PilahScreenState extends State<PilahScreen> {
                     ],
                   ),
                   child: Icon(
-                    place.icon,
+                    _iconFor(place.icon),
                     color: Colors.white,
                     size: 19,
                   ),
@@ -992,9 +1054,7 @@ class _PilahScreenState extends State<PilahScreen> {
     );
   }
 
-  Widget _buildPlaceCard(
-    WastePointDummy place,
-  ) {
+  Widget _buildPlaceCard(WastePoint place) {
     return GestureDetector(
       onTap: () {
         _showPlaceDetail(place);
@@ -1032,7 +1092,7 @@ class _PilahScreenState extends State<PilahScreen> {
                     BorderRadius.circular(16),
               ),
               child: Icon(
-                place.icon,
+                _iconFor(place.icon),
                 color:
                     const Color(0xFF2E7D32),
                 size: 25,
@@ -1267,9 +1327,7 @@ class _PilahScreenState extends State<PilahScreen> {
   // DETAIL BOTTOM SHEET
   // ============================================================
 
-  void _showPlaceDetail(
-    WastePointDummy place,
-  ) {
+  void _showPlaceDetail(WastePoint place) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1335,7 +1393,7 @@ class _PilahScreenState extends State<PilahScreen> {
                         ),
                       ),
                       child: Icon(
-                        place.icon,
+                        _iconFor(place.icon),
                         color: const Color(
                             0xFF2E7D32),
                         size: 29,

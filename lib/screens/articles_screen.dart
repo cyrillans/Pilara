@@ -2,9 +2,27 @@ import 'package:flutter/material.dart';
 
 import '../data/dummy_articles.dart';
 import '../routers/app_router.dart';
+import '../services/article_catalog.dart';
 
-class ArticlesScreen extends StatelessWidget {
+class ArticlesScreen extends StatefulWidget {
   const ArticlesScreen({super.key});
+
+  @override
+  State<ArticlesScreen> createState() => _ArticlesScreenState();
+}
+
+class _ArticlesScreenState extends State<ArticlesScreen> {
+  late Future<List<Article>> _articles;
+
+  @override
+  void initState() {
+    super.initState();
+    _articles = _loadArticles();
+  }
+
+  Future<List<Article>> _loadArticles() async {
+    return loadArticleCatalog();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,25 +64,47 @@ class ArticlesScreen extends StatelessWidget {
       // BODY
       // ============================================================
 
-      body: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(
-          20,
-          10,
-          20,
-          30,
-        ),
-
-        itemCount: dummyArticles.length,
-
-        separatorBuilder: (_, __) {
-          return const SizedBox(height: 16);
-        },
-
-        itemBuilder: (context, index) {
-          final article = dummyArticles[index];
-
-          return _ArticleListCard(
-            article: article,
+      body: FutureBuilder<List<Article>>(
+        future: _articles,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      snapshot.error.toString(),
+                      textAlign: TextAlign.center,
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _articles = _loadArticles();
+                        });
+                      },
+                      child: const Text('Coba lagi'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+          final articles = snapshot.data;
+          if (articles == null) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (articles.isEmpty) {
+            return const Center(child: Text('Belum ada artikel.'));
+          }
+          return ListView.separated(
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
+            itemCount: articles.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 16),
+            itemBuilder: (context, index) => _ArticleListCard(
+              article: articles[index],
+            ),
           );
         },
       ),

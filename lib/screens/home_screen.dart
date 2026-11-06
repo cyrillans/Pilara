@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../data/dummy_home.dart';
 import '../data/dummy_articles.dart';
 import '../routers/app_router.dart';
+import '../services/article_catalog.dart';
+import '../services/pilara_api.dart';
 import 'camera_screen.dart';
 import 'riwayat_screen.dart';
 import 'profile_screen.dart';
@@ -28,9 +30,10 @@ class _HomeScreenState extends State<HomeScreen> {
   // ============================================================
 
   int currentIndex = 0;
+  final _homeContentKey = GlobalKey<_HomeContentState>();
 
-  final List<Widget> pages = const [
-    HomeContent(),
+  late final List<Widget> pages = [
+    HomeContent(key: _homeContentKey),
     PilahScreen(),
     RiwayatScreen(),
     ProfileScreen()
@@ -40,13 +43,14 @@ class _HomeScreenState extends State<HomeScreen> {
   // BUKA KAMERA
   // ============================================================
 
-  void _openCamera() {
-    Navigator.push(
+  Future<void> _openCamera() async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => const CameraScreen(),
       ),
     );
+    _homeContentKey.currentState?._loadActivities();
   }
 
   // ============================================================
@@ -224,8 +228,46 @@ class _HomeScreenState extends State<HomeScreen> {
 // HOME CONTENT
 // ==================================================================
 
-class HomeContent extends StatelessWidget {
+class HomeContent extends StatefulWidget {
   const HomeContent({super.key});
+
+  @override
+  State<HomeContent> createState() => _HomeContentState();
+}
+
+class _HomeContentState extends State<HomeContent> {
+  AppUser? _user;
+  ActivitySummary? _activitySummary;
+  String? _activityError;
+  late Future<List<Article>> _articles;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadActivities();
+    _articles = loadArticleCatalog(limit: 3);
+  }
+
+  Future<void> _loadActivities() async {
+    try {
+      final user = await PilaraApi.instance.currentUser();
+      if (user == null) {
+        throw const ApiException('Sesi berakhir. Silakan masuk kembali.');
+      }
+      final result = await PilaraApi.instance.fetchActivities();
+      if (!mounted) return;
+      setState(() {
+        _user = user;
+        _activitySummary = result;
+        _activityError = null;
+      });
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _activityError = error.message;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -242,11 +284,11 @@ class HomeContent extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Column(
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Halo, Pilara! 👋',
+                      'Halo, ${_user?.name ?? 'Pilara'}! 👋',
                       style: TextStyle(
                         fontSize: 25,
                         fontWeight: FontWeight.bold,
@@ -347,7 +389,9 @@ class HomeContent extends StatelessWidget {
                         ),
                         const SizedBox(height: 3),
                         Text(
-                          '$dummyInitialPoints Poin',
+                          _activitySummary == null
+                              ? '—'
+                              : '${_activitySummary!.totalPoints} Poin',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 23,
@@ -530,17 +574,36 @@ class HomeContent extends StatelessWidget {
 
             SizedBox(
               height: 205,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: dummyHomeArticles.length,
-                separatorBuilder: (_, __) =>
-                    const SizedBox(width: 12),
-                itemBuilder: (context, index) {
-                  final article =
-                      dummyHomeArticles[index];
-
-                  return _ArticleCard(
-                    article: article,
+              child: FutureBuilder<List<Article>>(
+                future: _articles,
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return _DashboardMessage(
+                      message: snapshot.error.toString(),
+                      actionLabel: 'Coba lagi',
+                      onPressed: () {
+                        setState(() {
+                          _articles = loadArticleCatalog(limit: 3);
+                        });
+                      },
+                    );
+                  }
+                  final articles = snapshot.data;
+                  if (articles == null) {
+                    return const Center(
+                      child: CircularProgressIndicator(),
+                    );
+                  }
+                  if (articles.isEmpty) {
+                    return const Center(child: Text('Belum ada artikel.'));
+                  }
+                  return ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: articles.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 12),
+                    itemBuilder: (context, index) => _ArticleCard(
+                      article: articles[index],
+                    ),
                   );
                 },
               ),
@@ -566,7 +629,18 @@ class HomeContent extends StatelessWidget {
             // BELUM ADA AKTIVITAS
             // ------------------------------------------------------
 
-            if (dummyRecentActivities.isEmpty)
+            if (_activityError != null)
+              _DashboardMessage(
+                message: _activityError!,
+                actionLabel: 'Coba lagi',
+                onPressed: _loadActivities,
+              )
+            else if (_activitySummary == null)
+              const Padding(
+                padding: EdgeInsets.all(24),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_activitySummary!.activities.isEmpty)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(
@@ -594,7 +668,8 @@ class HomeContent extends StatelessWidget {
                     ),
                     const SizedBox(height: 5),
                     const Text(
-                      'Mulai pilah sampah untuk mendapatkan poin.',
+                      'Hasil klasifikasi tersimpan di riwayat. '
+                      'Poin diberikan setelah setoran terverifikasi.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 13,
@@ -609,7 +684,7 @@ class HomeContent extends StatelessWidget {
             // AKTIVITAS
             // ------------------------------------------------------
 
-            ...dummyRecentActivities.map(
+            ...?_activitySummary?.activities.take(3).map(
               (activity) {
                 return Padding(
                   padding: const EdgeInsets.only(
@@ -617,11 +692,11 @@ class HomeContent extends StatelessWidget {
                   ),
                   child: _ActivityItem(
                     icon: _getActivityIcon(
-                      activity['icon'],
+                      _activityIconName(activity.wasteType),
                     ),
-                    title: activity['title'],
-                    subtitle: activity['subtitle'],
-                    points: activity['points'].toString(),
+                    title: activity.title,
+                    subtitle: activity.subtitle,
+                    points: activity.points.toString(),
                   ),
                 );
               },
@@ -1018,6 +1093,41 @@ IconData _getActivityIcon(String icon) {
     default:
       return Icons.history;
   }
+}
+
+String _activityIconName(String wasteType) => switch (wasteType) {
+  'Organik' => 'eco',
+  'B3' => 'warning',
+  'Anorganik' => 'recycling',
+  _ => 'delete',
+};
+
+class _DashboardMessage extends StatelessWidget {
+  const _DashboardMessage({
+    required this.message,
+    required this.actionLabel,
+    required this.onPressed,
+  });
+
+  final String message;
+  final String actionLabel;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        children: [
+          Text(message, textAlign: TextAlign.center),
+          TextButton(onPressed: onPressed, child: Text(actionLabel)),
+        ],
+      ),
+  );
 }
 
 // ==================================================================

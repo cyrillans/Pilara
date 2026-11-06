@@ -7,6 +7,8 @@ import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
 
+import '../services/pilara_api.dart';
+
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key});
 
@@ -311,6 +313,21 @@ class _CameraScreenState extends State<CameraScreen> {
         _confidence = bestScore;
         _isProcessing = false;
       });
+      try {
+        await PilaraApi.instance.recordClassification(
+          wasteType: _formatLabel(label),
+          confidence: bestScore,
+        );
+      } on ApiException catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Klasifikasi berhasil, tetapi riwayat gagal disimpan: ${error.message}',
+            ),
+          ),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
 

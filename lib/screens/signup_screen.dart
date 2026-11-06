@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../services/pilara_api.dart';
+import 'home_screen.dart';
+
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
 
@@ -15,6 +18,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   bool isPasswordVisible = false;
   bool isConfirmPasswordVisible = false;
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
@@ -25,10 +29,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
 
-  void register() {
+  Future<void> register() async {
     final name = nameController.text.trim();
     final email = emailController.text.trim();
-    final password = passwordController.text.trim();
+    final password = passwordController.text;
     final confirmPassword =
         confirmPasswordController.text.trim();
 
@@ -53,11 +57,33 @@ class _SignUpScreenState extends State<SignUpScreen> {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Registrasi berhasil'),
-      ),
-    );
+    setState(() {
+      _isSubmitting = true;
+    });
+    try {
+      await PilaraApi.instance.register(
+        name: name,
+        email: email,
+        password: password,
+      );
+      if (!mounted) return;
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        (_) => false,
+      );
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
   }
 
   @override
@@ -192,14 +218,20 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: register,
-                    child: const Text(
-                      'SIGN UP',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    onPressed: _isSubmitting ? null : register,
+                    child: _isSubmitting
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text(
+                            'SIGN UP',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                   ),
                 ),
 
