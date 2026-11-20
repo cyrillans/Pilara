@@ -6,6 +6,7 @@ import '../routers/app_router.dart';
 import '../services/article_catalog.dart';
 import '../services/pilara_api.dart';
 import 'camera_screen.dart';
+import 'pilala_chat_sheet.dart';
 import 'riwayat_screen.dart';
 import 'profile_screen.dart';
 import 'pilah_screen.dart';
@@ -75,6 +76,30 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: Colors.green[50],
 
       body: pages[currentIndex],
+      floatingActionButton: currentIndex == 0
+          ? FloatingActionButton.extended(
+              backgroundColor: Colors.green.shade700,
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.eco_outlined),
+              label: const Text('Pilala'),
+              onPressed: () {
+                showModalBottomSheet<void>(
+                  context: context,
+                  isScrollControlled: true,
+                  useSafeArea: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (_) => const FractionallySizedBox(
+                    heightFactor: 0.88,
+                    child: ClipRRect(
+                      borderRadius:
+                          BorderRadius.vertical(top: Radius.circular(24)),
+                      child: PilalaChatSheet(),
+                    ),
+                  ),
+                );
+              },
+            )
+          : null,
 
       // ========================================================
       // BOTTOM NAVIGATION

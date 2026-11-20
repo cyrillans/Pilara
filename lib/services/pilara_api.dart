@@ -79,7 +79,17 @@ class PilaraApi {
     final token = await _requiredToken();
     final path = month == null
         ? '/api/me/activities'
-        : '/api/me/activities?month=${month.year.toString().padLeft(4, '0')}-${month.month.toString().padLeft(2, '0')}';
+        : Uri(
+            path: '/api/me/activities',
+            queryParameters: {
+              'month':
+                  '${month.year.toString().padLeft(4, '0')}-${month.month.toString().padLeft(2, '0')}',
+              'timezoneOffsetMinutes': DateTime(
+                month.year,
+                month.month,
+              ).timeZoneOffset.inMinutes.toString(),
+            },
+          ).toString();
     final response = await _send('GET', path, token: token);
     final activities = (response['activities'] as List<dynamic>)
         .map((item) => ActivityRecord.fromJson(item as Map<String, dynamic>))

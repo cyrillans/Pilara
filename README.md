@@ -36,6 +36,7 @@ Aplikasi Pilara memiliki beberapa fitur utama, yaitu:
 - Riwayat
 - Profile
 - Artikel
+- Pilala (chat asisten kebersihan dan identifikasi sampah dari foto)
 
 Penjelasan singkat:
 
@@ -45,6 +46,7 @@ Penjelasan singkat:
 - Riwayat: menampilkan aktivitas atau data sampah yang sebelumnya diproses.
 - Profile: menampung data pengguna dan pengaturan akun.
 - Artikel: menyediakan edukasi terkait sampah, lingkungan, dan pengelolaan limbah.
+- Pilala: menjawab pertanyaan seputar kebersihan dan mengidentifikasi sampah dari foto.
 
 ## Teknologi
 
@@ -59,8 +61,9 @@ Project ini dibangun menggunakan teknologi berikut:
 - Maps Launcher
 - URL Launcher
 - Model ML berbasis file TFLite (`assets/models/model.tflite`)
+- Firebase AI Logic (`firebase_ai`), Firebase App Check, dan `image_picker`
 
-Teknologi yang benar-benar digunakan dalam proyek ini sesuai dependensi utama yang terpasang adalah Flutter, Dart, TensorFlow Lite, camera, geolocator, flutter_map, maps_launcher, dan url_launcher.
+Teknologi yang benar-benar digunakan dalam proyek ini sesuai dependensi utama yang terpasang adalah Flutter, Dart, TensorFlow Lite, camera, Firebase AI Logic, Firebase App Check, image_picker, geolocator, flutter_map, maps_launcher, dan url_launcher.
 
 ## Kategori Sampah
 
@@ -168,6 +171,26 @@ flutter pub get
 flutter run
 ```
 
+### Integrasi Firebase AI Pilala
+
+Fitur chat Pilala dan identifikasi sampah dari foto menggunakan Firebase AI Logic
+(`firebase_ai`) dengan model `gemini-2.5-flash`.
+
+1. Buat atau pilih project Firebase, lalu jalankan `flutterfire configure` dari
+   direktori `Pilara` dan daftarkan aplikasi Android/iOS/macOS yang digunakan.
+2. Aktifkan Firebase AI Logic pada project tersebut.
+3. Jalankan aplikasi pada Android, iOS, atau macOS. Konfigurasi App Check
+   menggunakan provider debug pada build debug dan Play Integrity / App Attest
+   pada build rilis. Daftarkan debug token yang muncul di log pada Firebase
+   Console sebelum menguji project yang mewajibkan App Check.
+4. Buka tab Home lalu tekan tombol **Pilala**. Ikon foto dapat digunakan untuk
+   mengambil gambar atau memilih foto; gambar dibatasi hingga 1024×1024 dengan
+   kualitas 80 sebelum dikirim untuk dianalisis.
+
+Firebase AI Logic belum didukung oleh konfigurasi Pilara untuk Windows, Linux,
+atau web. Jangan menambahkan API key atau kredensial service account ke source
+code aplikasi.
+
 Untuk menjalankan pada perangkat tertentu, gunakan:
 
 ```bash
@@ -195,6 +218,7 @@ Status pengembangan proyek Pilara saat ini:
 - Riwayat
 - Profile
 - Artikel
+- Pilala AI (chat kebersihan dan identifikasi sampah dari foto)
 - Integrasi model TFLite
 
 ### Masih dalam pengembangan
