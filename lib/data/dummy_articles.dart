@@ -32,6 +32,37 @@ class Article {
     required this.sourceName,
     required this.sourceUrl,
   });
+
+  factory Article.fromMap(Map<String, dynamic> map) => Article(
+    id: map['id'] as int,
+    title: map['title'] as String,
+    description: map['description'] as String,
+    category: map['category'] as String,
+    readTime: map['readTime'] as String,
+    author: map['author'] as String,
+    updatedDate: map['updatedDate'] as String,
+    headerImage: map['headerImage'] as String,
+    icon: switch (map['icon']) {
+      'shopping_bag_outlined' => Icons.shopping_bag_outlined,
+      'delete_sweep_rounded' => Icons.delete_sweep_rounded,
+      'eco_rounded' => Icons.eco_rounded,
+      'warning_amber_rounded' => Icons.warning_amber_rounded,
+      'home_work_outlined' => Icons.home_work_outlined,
+      _ => Icons.recycling_rounded,
+    },
+    introduction: map['introduction'] as String,
+    sections: (map['sections'] as List)
+        .map(
+          (s) => ArticleSection(
+            title: s['title'] as String,
+            content: s['content'] as String,
+          ),
+        )
+        .toList(),
+    importantPoints: (map['importantPoints'] as List).cast<String>(),
+    sourceName: map['sourceName'] as String,
+    sourceUrl: map['sourceUrl'] as String,
+  );
 }
 
 class ArticleSection {

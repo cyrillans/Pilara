@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "764928948243",
+    "project_id": "pilara-bb212",
+    "storage_bucket": "pilara-bb212.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:764928948243:android:6557e33ad0e25ece6367e6",
+        "android_client_info": {
+          "package_name": "com.example.pilara"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC3-FTUtaddvvt2GHm-ZluSRZLgV3PXot8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
