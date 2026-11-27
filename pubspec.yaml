@@ -36,6 +36,16 @@ flutter:
     - assets/images/organik.jpg
     - assets/images/sampah_b3.jpg
     - assets/images/sampah_lainnya.jpg
+    - assets/images/biopori.jpg
+    - assets/images/komposter.jpg
+    - assets/images/ecoenzim.jpg
+    - assets/images/maggot.jpg
+    - assets/images/bokashi.jpg
+    - assets/images/vermikompos.jpg
+    - assets/images/leaf_mold.jpg
+    - assets/images/cangkang_telur.jpg
+    - assets/images/tanam_langsung.jpg
+    - assets/images/pengering.jpg
     - assets/models/model.tflite
     - assets/models/labels.txt
   

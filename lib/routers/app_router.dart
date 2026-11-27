@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 
 import '../data/dummy_articles.dart';
@@ -8,6 +9,7 @@ import '../screens/signup_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/camera_screen.dart';
 import '../screens/pilah_screen.dart';
+import '../screens/belajar_screen.dart';
 import '../screens/riwayat_screen.dart';
 import '../screens/profile_screen.dart';
 import '../screens/detail_screen.dart';
@@ -21,6 +23,7 @@ class AppRouter {
   static const String home = '/home';
   static const String camera = '/camera';
   static const String pilah = '/pilah';
+  static const String belajar = '/belajar';
   static const String riwayat = '/riwayat';
   static const String profile = '/profile';
   static const String detail = '/detail';
@@ -63,6 +66,12 @@ class AppRouter {
         return MaterialPageRoute(
           settings: settings,
           builder: (_) => const PilahScreen(),
+        );
+
+      case belajar:
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => const LearnScreen(),
         );
 
       case riwayat:

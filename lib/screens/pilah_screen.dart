@@ -434,7 +434,7 @@ class _PilahScreenState extends State<PilahScreen> {
 
   Widget _buildFilters() {
     return SizedBox(
-      height: 36,
+      height: 40,
       child: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
@@ -693,6 +693,8 @@ class _PilahScreenState extends State<PilahScreen> {
                   children: [
                     Text(
                       _user != null ? 'Terdekat dari kamu' : 'Titik pilah',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w800,
@@ -702,6 +704,8 @@ class _PilahScreenState extends State<PilahScreen> {
                     const SizedBox(height: 2),
                     Text(
                       '$count lokasi',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontSize: 12.5, color: _muted),
                     ),
                   ],
@@ -811,14 +815,14 @@ class _PilahScreenState extends State<PilahScreen> {
                     style: const TextStyle(fontSize: 12.5, color: _muted),
                   ),
                   const SizedBox(height: 8),
-                  Row(
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       _StatusDot(open: open, label: p.statusLabel(now)),
-                      if (distance != null) ...[
-                        const SizedBox(width: 12),
+                      if (distance != null)
                         _Meta(icon: Icons.near_me_rounded, text: distance),
-                      ],
-                      const SizedBox(width: 12),
                       _Meta(
                         icon: Icons.star_rounded,
                         text: p.rating.toStringAsFixed(1),
@@ -964,7 +968,9 @@ class _PilahScreenState extends State<PilahScreen> {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      _StatusDot(open: open, label: p.statusLabel(now)),
+                      Flexible(
+                        child: _StatusDot(open: open, label: p.statusLabel(now)),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 14),
@@ -1078,14 +1084,17 @@ class _PilahScreenState extends State<PilahScreen> {
                   Row(
                     children: [
                       if (p.phone != null) ...[
-                        _ActionButton(
-                          label: 'Telepon',
-                          icon: Icons.call_rounded,
-                          background: AppColors.mint,
-                          foreground: AppColors.primaryGreen,
-                          height: 52,
-                          radius: 26,
-                          onTap: () => _call(p),
+                        Flexible(
+                          child: _ActionButton(
+                            label: 'Telepon',
+                            icon: Icons.call_rounded,
+                            background: AppColors.mint,
+                            foreground: AppColors.primaryGreen,
+                            height: 52,
+                            radius: 26,
+                            expand: true,
+                            onTap: () => _call(p),
+                          ),
                         ),
                         const SizedBox(width: 10),
                       ],
@@ -1160,7 +1169,9 @@ class _FilterChip extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
+        height: 36,
         padding: const EdgeInsets.symmetric(horizontal: 14),
+        alignment: Alignment.center,
         decoration: BoxDecoration(
           color: selected ? AppColors.primaryGreen : AppColors.white,
           borderRadius: BorderRadius.circular(18),
@@ -1223,12 +1234,16 @@ class _StatusDot extends StatelessWidget {
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 5),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: color,
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
           ),
         ),
       ],
@@ -1278,6 +1293,7 @@ class _Stat extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             value,

@@ -7,7 +7,7 @@ import '../routers/app_router.dart';
 import 'camera_screen.dart';
 import 'profile_screen.dart';
 import 'pilah_screen.dart';
-import 'articles_screen.dart';
+import 'belajar_screen.dart';
 
 // ==================================================================
 // PALET WARNA (Terintegrasi dengan AppColors)
@@ -226,17 +226,17 @@ class _HomeScreenState extends State<HomeScreen> {
   void _goTo(int index) => setState(() => currentIndex = index);
 
   late final List<Widget> pages = [
-    HomeContent(onNavigateTab: _goTo),
-    const CameraScreen(),
-    const PilahScreen(),
-    const ArticlesScreen(),
-    const ProfileScreen(),
-  ];
+  HomeContent(onNavigateTab: _goTo),
+  const CameraScreen(),
+  const PilahScreen(),
+  const LearnScreen(),
+  const ProfileScreen(),
+];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background, // Gunakan background dari AppColors
+      backgroundColor: AppColors.background,
       body: IndexedStack(index: currentIndex, children: pages),
       bottomNavigationBar: ValueListenableBuilder<int>(
         valueListenable: appLanguage,
