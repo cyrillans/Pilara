@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 // ==================================================================
-// PALET WARNA (Selaras dengan Sign In & Home)
+// PALET WARNA (Selaras dengan Home & Sign In)
 // ==================================================================
 
 const Color _kPrimaryGreen = Color(0xFF1B5E3A);
@@ -45,13 +45,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
     final confirmPassword = confirmPasswordController.text.trim();
-
-    if (name.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Semua data wajib diisi')),
-      );
-      return;
-    }
 
     if (password != confirmPassword) {
       ScaffoldMessenger.of(context).showSnackBar(

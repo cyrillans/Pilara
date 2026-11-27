@@ -6,7 +6,58 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../core/theme/app_colors.dart';
 import '../data/dummy_pilah.dart';
+
+// ==================================================================
+// TOKEN DESAIN
+// ==================================================================
+
+const Color _ink = Color(0xFF18221C);
+const Color _muted = Color(0xFF75837B);
+const Color _line = Color(0xFFE9EEEA);
+const Color _openColor = Color(0xFF2E9E5B);
+
+// Fallback sebelum GPS aktif: sekitar kampus USU, Medan (data dummy ada di Sumut).
+const LatLng _fallbackCenter = LatLng(3.5650, 98.6560);
+
+extension _CategoryUi on PilahCategory {
+  Color get color => Color(colorValue);
+  Color get tint => color.withValues(alpha: 0.12);
+
+  IconData get icon {
+    switch (this) {
+      case PilahCategory.organik:
+        return Icons.eco_rounded;
+      case PilahCategory.anorganik:
+        return Icons.recycling_rounded;
+      case PilahCategory.b3:
+        return Icons.warning_amber_rounded;
+      case PilahCategory.residu:
+        return Icons.delete_outline_rounded;
+    }
+  }
+}
+
+const List<String> _dayNames = [
+  'Senin',
+  'Selasa',
+  'Rabu',
+  'Kamis',
+  'Jumat',
+  'Sabtu',
+  'Minggu',
+];
+
+String _closedDaysLabel(List<int> days) {
+  if (days.isEmpty) return 'Buka setiap hari';
+  final names = ([...days]..sort()).map((d) => _dayNames[d - 1]).join(', ');
+  return 'Tutup $names';
+}
+
+// ==================================================================
+// SCREEN
+// ==================================================================
 
 class PilahScreen extends StatefulWidget {
   const PilahScreen({super.key});
@@ -16,654 +67,432 @@ class PilahScreen extends StatefulWidget {
 }
 
 class _PilahScreenState extends State<PilahScreen> {
+  static const double _sheetMin = 0.14;
+  static const double _sheetMid = 0.40;
+  static const double _sheetMax = 0.90;
+
   final MapController _mapController = MapController();
-  final TextEditingController _searchController =
-      TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
+  final DraggableScrollableController _sheetController =
+      DraggableScrollableController();
+  final ValueNotifier<double> _sheetExtent = ValueNotifier<double>(_sheetMid);
 
-  // Default awal sebelum GPS berhasil didapatkan.
-  // Akan otomatis berpindah ke lokasi HP setelah GPS aktif.
-  static const LatLng _defaultLocation =
-      LatLng(0.5071, 101.4478);
+  LatLng? _user;
+  bool _loadingLocation = true;
 
-  LatLng _currentLocation = _defaultLocation;
-
-  bool _isLoadingLocation = true;
-  bool _locationReady = false;
-
-  String _selectedCategory = 'Semua';
-  String _searchQuery = '';
-
-  final List<String> _categories = [
-    'Semua',
-    'Organik',
-    'Anorganik',
-    'B3',
-    'Lainnya',
-  ];
+  PilahCategory? _category; // null = semua
+  bool _openOnly = false;
+  String _query = '';
+  String? _selectedId;
 
   @override
   void initState() {
     super.initState();
-
     _searchController.addListener(() {
-      setState(() {
-        _searchQuery =
-            _searchController.text.trim().toLowerCase();
-      });
+      setState(() => _query = _searchController.text);
+      if (_query.trim().isNotEmpty) _snapSheetTo(0.62);
     });
-
-    _getCurrentLocation();
+    _sheetController.addListener(() {
+      if (_sheetController.isAttached) {
+        _sheetExtent.value = _sheetController.size;
+      }
+    });
+    unawaited(_getCurrentLocation());
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     _mapController.dispose();
+    _sheetController.dispose();
+    _sheetExtent.dispose();
     super.dispose();
   }
 
-  // ============================================================
-  // LOCATION
-  // ============================================================
+  // ----------------------------------------------------------------
+  // LOKASI
+  // ----------------------------------------------------------------
 
   Future<void> _getCurrentLocation() async {
     if (!mounted) return;
-
-    setState(() {
-      _isLoadingLocation = true;
-    });
+    setState(() => _loadingLocation = true);
 
     try {
-      final serviceEnabled =
-          await Geolocator.isLocationServiceEnabled();
-
-      if (!serviceEnabled) {
-        if (!mounted) return;
-
-        setState(() {
-          _isLoadingLocation = false;
-          _locationReady = false;
-        });
-
-        _showLocationMessage(
-          'GPS belum aktif. Silakan aktifkan lokasi pada HP.',
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        _locationFailed(
+          'GPS belum aktif. Aktifkan lokasi di HP kamu.',
           actionLabel: 'Buka',
-          onAction: () async {
-            await Geolocator.openLocationSettings();
-          },
+          onAction: Geolocator.openLocationSettings,
         );
-
         return;
       }
 
-      LocationPermission permission =
-          await Geolocator.checkPermission();
-
+      var permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
-        permission =
-            await Geolocator.requestPermission();
+        permission = await Geolocator.requestPermission();
       }
 
       if (permission == LocationPermission.denied) {
-        if (!mounted) return;
-
-        setState(() {
-          _isLoadingLocation = false;
-          _locationReady = false;
-        });
-
-        _showLocationMessage(
-          'Izin lokasi diperlukan untuk mencari titik terdekat.',
-        );
-
+        _locationFailed('Izinkan akses lokasi untuk melihat titik terdekat.');
         return;
       }
-
       if (permission == LocationPermission.deniedForever) {
-        if (!mounted) return;
-
-        setState(() {
-          _isLoadingLocation = false;
-          _locationReady = false;
-        });
-
-        _showLocationMessage(
-          'Izin lokasi ditolak permanen. Aktifkan dari Pengaturan.',
+        _locationFailed(
+          'Izin lokasi ditolak permanen. Ubah di Pengaturan.',
           actionLabel: 'Pengaturan',
-          onAction: () async {
-            await Geolocator.openAppSettings();
-          },
+          onAction: Geolocator.openAppSettings,
         );
-
         return;
       }
 
-      final position =
-          await Geolocator.getCurrentPosition(
+      final pos = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
         ),
       );
-
-      final newLocation = LatLng(
-        position.latitude,
-        position.longitude,
-      );
-
       if (!mounted) return;
 
+      final here = LatLng(pos.latitude, pos.longitude);
       setState(() {
-        _currentLocation = newLocation;
-        _locationReady = true;
-        _isLoadingLocation = false;
+        _user = here;
+        _loadingLocation = false;
       });
-
-      _mapController.move(
-        newLocation,
-        14.5,
-      );
-    } catch (e) {
-      if (!mounted) return;
-
-      setState(() {
-        _isLoadingLocation = false;
-        _locationReady = false;
-      });
-
-      _showLocationMessage(
-        'Lokasi belum berhasil didapatkan. Coba lagi.',
-      );
+      _mapController.move(here, 14.5);
+    } catch (_) {
+      _locationFailed('Lokasi belum berhasil didapat. Coba lagi.');
     }
   }
 
-  Future<void> _centerToCurrentLocation() async {
-    if (_isLoadingLocation) return;
+  void _locationFailed(
+    String message, {
+    String? actionLabel,
+    Future<bool> Function()? onAction,
+  }) {
+    if (!mounted) return;
+    setState(() {
+      _loadingLocation = false;
+      _user = null;
+    });
+    _snack(message, actionLabel: actionLabel, onAction: onAction);
+  }
 
-    if (!_locationReady) {
+  Future<void> _recenter() async {
+    if (_loadingLocation) return;
+    final here = _user;
+    if (here == null) {
       await _getCurrentLocation();
-      return;
-    }
-
-    _mapController.move(
-      _currentLocation,
-      15,
-    );
-  }
-
-  // ============================================================
-  // FILTER
-  // ============================================================
-
-  List<WastePointDummy> get _filteredPlaces {
-    List<WastePointDummy> result =
-        List.from(dummyWastePoints);
-
-    if (_selectedCategory != 'Semua') {
-      result = result.where((place) {
-        return place.acceptedWaste
-            .contains(_selectedCategory);
-      }).toList();
-    }
-
-    if (_searchQuery.isNotEmpty) {
-      result = result.where((place) {
-        final name = place.name.toLowerCase();
-        final address = place.address.toLowerCase();
-        final waste =
-            place.acceptedWaste.join(' ').toLowerCase();
-
-        return name.contains(_searchQuery) ||
-            address.contains(_searchQuery) ||
-            waste.contains(_searchQuery);
-      }).toList();
-    }
-
-    if (_locationReady) {
-      result.sort((a, b) {
-        final distanceA =
-            Geolocator.distanceBetween(
-          _currentLocation.latitude,
-          _currentLocation.longitude,
-          a.latitude,
-          a.longitude,
-        );
-
-        final distanceB =
-            Geolocator.distanceBetween(
-          _currentLocation.latitude,
-          _currentLocation.longitude,
-          b.latitude,
-          b.longitude,
-        );
-
-        return distanceA.compareTo(distanceB);
-      });
-    }
-
-    return result;
-  }
-
-  // ============================================================
-  // DISTANCE
-  // ============================================================
-
-  String _getDistance(WastePointDummy place) {
-    if (!_locationReady) {
-      return 'Lokasi belum tersedia';
-    }
-
-    final distance =
-        Geolocator.distanceBetween(
-      _currentLocation.latitude,
-      _currentLocation.longitude,
-      place.latitude,
-      place.longitude,
-    );
-
-    if (distance < 1000) {
-      return '${distance.round()} m';
-    }
-
-    return '${(distance / 1000).toStringAsFixed(1)} km';
-  }
-
-  // ============================================================
-  // OPEN MAP / ROUTE
-  // ============================================================
-
-  Future<void> _openRoute(
-    WastePointDummy place,
-  ) async {
-    final destination =
-        '${place.latitude},${place.longitude}';
-
-    final Uri uri;
-
-    if (_locationReady) {
-      uri = Uri.parse(
-        'https://www.google.com/maps/dir/?api=1'
-        '&origin=${_currentLocation.latitude},${_currentLocation.longitude}'
-        '&destination=$destination'
-        '&travelmode=driving',
-      );
     } else {
-      uri = Uri.parse(
-        'https://www.google.com/maps/search/?api=1'
-        '&query=$destination',
-      );
-    }
-
-    try {
-      final launched = await launchUrl(
-        uri,
-        mode: LaunchMode.externalApplication,
-      );
-
-      if (!launched && mounted) {
-        _showLocationMessage(
-          'Tidak dapat membuka aplikasi Maps.',
-        );
-      }
-    } catch (e) {
-      if (!mounted) return;
-
-      _showLocationMessage(
-        'Terjadi masalah saat membuka Maps.',
-      );
+      _mapController.move(here, 15);
     }
   }
 
-  // ============================================================
-  // UI
-  // ============================================================
+  // ----------------------------------------------------------------
+  // DATA
+  // ----------------------------------------------------------------
+
+  List<PilahLocation> get _results {
+    final now = DateTime.now();
+    var list = searchPilah(
+      query: _query,
+      category: _category,
+      userLat: _user?.latitude,
+      userLng: _user?.longitude,
+    );
+    if (_openOnly) {
+      list = list.where((p) => p.isOpenAt(now)).toList();
+    }
+    return list;
+  }
+
+  String? _distanceOf(PilahLocation p) {
+    final here = _user;
+    if (here == null) return null;
+    return formatDistance(p.distanceKmFrom(here.latitude, here.longitude));
+  }
+
+  void _resetFilters() {
+    _searchController.clear();
+    setState(() {
+      _category = null;
+      _openOnly = false;
+    });
+  }
+
+  // ----------------------------------------------------------------
+  // AKSI
+  // ----------------------------------------------------------------
+
+  Future<void> _openRoute(PilahLocation p) async {
+    final dest = '${p.latitude},${p.longitude}';
+    final here = _user;
+    final uri = Uri.parse(
+      here != null
+          ? 'https://www.google.com/maps/dir/?api=1'
+              '&origin=${here.latitude},${here.longitude}'
+              '&destination=$dest&travelmode=driving'
+          : 'https://www.google.com/maps/search/?api=1&query=$dest',
+    );
+    await _launch(uri, 'Tidak bisa membuka Maps.');
+  }
+
+  Future<void> _call(PilahLocation p) async {
+    final phone = p.phone;
+    if (phone == null) return;
+    final number = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+    await _launch(Uri(scheme: 'tel', path: number), 'Tidak bisa melakukan panggilan.');
+  }
+
+  Future<void> _launch(Uri uri, String errorMessage) async {
+    try {
+      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!ok) _snack(errorMessage);
+    } catch (_) {
+      _snack(errorMessage);
+    }
+  }
+
+  void _snapSheetTo(double target) {
+    if (!_sheetController.isAttached) return;
+    if (_sheetController.size < target - 0.02) {
+      unawaited(_sheetController.animateTo(
+        target,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      ));
+    }
+  }
+
+  void _focusOnMap(PilahLocation p) {
+    if (_sheetController.isAttached) {
+      unawaited(_sheetController.animateTo(
+        _sheetMid,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      ));
+    }
+    _mapController.move(LatLng(p.latitude, p.longitude), 16);
+  }
+
+  void _snack(
+    String message, {
+    String? actionLabel,
+    Future<bool> Function()? onAction,
+  }) {
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        ),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        action: actionLabel == null
+            ? null
+            : SnackBarAction(
+                label: actionLabel,
+                onPressed: () {
+                  if (onAction != null) unawaited(onAction());
+                },
+              ),
+      ),
+    );
+  }
+
+  // ----------------------------------------------------------------
+  // BUILD
+  // ----------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
-    final places = _filteredPlaces;
+    final places = _results;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F9F7),
-      body: SafeArea(
-        child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            SliverToBoxAdapter(
-              child: _buildHeader(),
-            ),
-            SliverToBoxAdapter(
-              child: _buildSearch(),
-            ),
-            SliverToBoxAdapter(
-              child: _buildCategoryFilter(),
-            ),
-            SliverToBoxAdapter(
-              child: _buildMap(places),
-            ),
-            SliverToBoxAdapter(
-              child: _buildNearbyHeader(
-                places.length,
-              ),
-            ),
-            if (places.isEmpty)
-              SliverToBoxAdapter(
-                child: _buildEmptyState(),
-              )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(
-                  20,
-                  0,
-                  20,
-                  28,
-                ),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final place = places[index];
-
-                      return Padding(
-                        padding:
-                            const EdgeInsets.only(
-                          bottom: 14,
-                        ),
-                        child: _buildPlaceCard(place),
-                      );
-                    },
-                    childCount: places.length,
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        20,
-        18,
-        20,
-        12,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding:
-                          const EdgeInsets.symmetric(
-                        horizontal: 9,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color:
-                            const Color(0xFFE7F5EA),
-                        borderRadius:
-                            BorderRadius.circular(20),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.eco_rounded,
-                            size: 14,
-                            color: Color(0xFF2E7D32),
-                          ),
-                          SizedBox(width: 5),
-                          Text(
-                            'Pilah lebih baik',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight:
-                                  FontWeight.w700,
-                              color:
-                                  Color(0xFF2E7D32),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Pilah Sampah',
-                  style: TextStyle(
-                    fontSize: 27,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF17231A),
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Temukan lokasi pengelolaan sampah di sekitar kamu.',
-                  style: TextStyle(
-                    fontSize: 13,
-                    height: 1.4,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Container(
-            width: 45,
-            height: 45,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius:
-                  BorderRadius.circular(15),
-              boxShadow: [
-                BoxShadow(
-                  color:
-                      Colors.black.withOpacity(0.05),
-                  blurRadius: 15,
-                  offset: const Offset(0, 5),
-                ),
-              ],
-            ),
-            child: IconButton(
-              onPressed: _getCurrentLocation,
-              icon: _isLoadingLocation
-                  ? const SizedBox(
-                      width: 19,
-                      height: 19,
-                      child:
-                          CircularProgressIndicator(
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : const Icon(
-                      Icons.my_location_rounded,
-                      size: 20,
-                    ),
-              color: const Color(0xFF2E7D32),
-              tooltip: 'Gunakan lokasi saya',
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSearch() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        20,
-        8,
-        20,
-        14,
-      ),
-      child: Container(
-        height: 52,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius:
-              BorderRadius.circular(17),
-          border: Border.all(
-            color: const Color(0xFFE7ECE8),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color:
-                  Colors.black.withOpacity(0.035),
-              blurRadius: 14,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: TextField(
-          controller: _searchController,
-          textInputAction:
-              TextInputAction.search,
-          decoration: InputDecoration(
-            hintText:
-                'Cari lokasi atau jenis sampah...',
-            hintStyle: TextStyle(
-              color: Colors.grey.shade500,
-              fontSize: 13,
-            ),
-            prefixIcon: const Icon(
-              Icons.search_rounded,
-              color: Color(0xFF5B6B5D),
-            ),
-            suffixIcon: _searchQuery.isNotEmpty
-                ? IconButton(
-                    onPressed: () {
-                      _searchController.clear();
-                    },
-                    icon: const Icon(
-                      Icons.close_rounded,
-                    ),
-                  )
-                : null,
-            border: InputBorder.none,
-            contentPadding:
-                const EdgeInsets.symmetric(
-              vertical: 15,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCategoryFilter() {
-    return SizedBox(
-      height: 48,
-      child: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(
-          20,
-          0,
-          20,
-          8,
-        ),
-        scrollDirection: Axis.horizontal,
-        physics:
-            const BouncingScrollPhysics(),
-        itemCount: _categories.length,
-        separatorBuilder: (_, __) {
-          return const SizedBox(width: 8);
-        },
-        itemBuilder: (context, index) {
-          final category =
-              _categories[index];
-          final selected =
-              _selectedCategory == category;
-
-          return GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedCategory = category;
-              });
-            },
-            child: AnimatedContainer(
-              duration: const Duration(
-                milliseconds: 200,
-              ),
-              padding:
-                  const EdgeInsets.symmetric(
-                horizontal: 16,
-              ),
-              decoration: BoxDecoration(
-                color: selected
-                    ? const Color(0xFF2E7D32)
-                    : Colors.white,
-                borderRadius:
-                    BorderRadius.circular(24),
-                border: Border.all(
-                  color: selected
-                      ? const Color(0xFF2E7D32)
-                      : const Color(0xFFE1E7E2),
-                ),
-              ),
-              child: Center(
-                child: Text(
-                  category,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight:
-                        FontWeight.w700,
-                    color: selected
-                        ? Colors.white
-                        : const Color(0xFF536056),
-                  ),
-                ),
-              ),
-            ),
+      backgroundColor: AppColors.background,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final height = constraints.maxHeight;
+          return Stack(
+            children: [
+              Positioned.fill(child: _buildMap(places)),
+              _buildFloatingControls(height),
+              _buildTopBar(),
+              _buildSheet(places),
+            ],
           );
         },
       ),
     );
   }
 
-  Widget _buildMap(
-    List<WastePointDummy> places,
-  ) {
+  // Tombol lokasi + atribusi OSM mengikuti tinggi sheet, lalu menghilang
+  // saat sheet hampir penuh.
+  Widget _buildFloatingControls(double height) {
+    return ValueListenableBuilder<double>(
+      valueListenable: _sheetExtent,
+      builder: (context, extent, _) {
+        final opacity = ((0.62 - extent) / 0.18).clamp(0.0, 1.0).toDouble();
+        return Positioned(
+          left: 16,
+          right: 16,
+          bottom: extent * height + 12,
+          child: IgnorePointer(
+            ignoring: opacity < 0.05,
+            child: Opacity(
+              opacity: opacity,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  _buildAttribution(),
+                  const Spacer(),
+                  _buildLocateButton(),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ----------------------------------------------------------------
+  // TOP BAR
+  // ----------------------------------------------------------------
+
+  Widget _buildTopBar() {
+    return Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.only(top: 10),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _buildSearch(),
+              ),
+              const SizedBox(height: 10),
+              _buildFilters(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearch() {
+    return Container(
+      height: 52,
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(26),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x1A000000),
+            blurRadius: 20,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: _searchController,
+        textInputAction: TextInputAction.search,
+        style: const TextStyle(
+          fontSize: 14.5,
+          fontWeight: FontWeight.w600,
+          color: _ink,
+        ),
+        decoration: InputDecoration(
+          hintText: 'Cari tempat atau jenis sampah',
+          hintStyle: const TextStyle(
+            color: _muted,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+          prefixIcon: const Icon(Icons.search_rounded, color: _muted),
+          suffixIcon: _query.isNotEmpty
+              ? IconButton(
+                  onPressed: _searchController.clear,
+                  icon: const Icon(Icons.close_rounded, size: 20, color: _muted),
+                )
+              : null,
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          filled: false,
+          contentPadding: const EdgeInsets.symmetric(vertical: 15),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilters() {
+    return SizedBox(
+      height: 36,
+      child: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        children: [
+          _FilterChip(
+            label: 'Semua',
+            selected: _category == null,
+            onTap: () => setState(() => _category = null),
+          ),
+          for (final c in PilahCategory.values) ...[
+            const SizedBox(width: 8),
+            _FilterChip(
+              label: c.label,
+              dot: c.color,
+              selected: _category == c,
+              onTap: () => setState(() => _category = _category == c ? null : c),
+            ),
+          ],
+          const SizedBox(width: 8),
+          _FilterChip(
+            label: 'Buka sekarang',
+            icon: Icons.schedule_rounded,
+            selected: _openOnly,
+            onTap: () => setState(() => _openOnly = !_openOnly),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ----------------------------------------------------------------
+  // PETA
+  // ----------------------------------------------------------------
+
+  Widget _buildMap(List<PilahLocation> places) {
     final markers = <Marker>[];
 
-    // Marker lokasi pengguna.
-    if (_locationReady) {
+    final here = _user;
+    if (here != null) {
       markers.add(
         Marker(
-          point: _currentLocation,
-          width: 48,
-          height: 48,
+          point: here,
+          width: 52,
+          height: 52,
           child: Container(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: const Color(0xFF2E7D32)
-                  .withOpacity(0.16),
+              color: AppColors.primaryGreen.withValues(alpha: 0.15),
             ),
             child: Center(
               child: Container(
                 width: 18,
                 height: 18,
                 decoration: BoxDecoration(
-                  color:
-                      const Color(0xFF2E7D32),
+                  color: AppColors.primaryGreen,
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white,
-                    width: 3,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color:
-                          const Color(0xFF2E7D32)
-                              .withOpacity(0.35),
-                      blurRadius: 10,
-                    ),
-                  ],
+                  border: Border.all(color: AppColors.white, width: 3),
                 ),
               ),
             ),
@@ -672,541 +501,343 @@ class _PilahScreenState extends State<PilahScreen> {
       );
     }
 
-    // Marker lokasi pengelolaan.
-    for (final place in places) {
+    for (final p in places) {
+      final selected = p.id == _selectedId;
+      final size = selected ? 46.0 : 36.0;
       markers.add(
         Marker(
-          point: LatLng(
-            place.latitude,
-            place.longitude,
-          ),
-          width: 44,
-          height: 52,
+          point: LatLng(p.latitude, p.longitude),
+          width: 48,
+          height: 48,
           child: GestureDetector(
-            onTap: () {
-              _showPlaceDetail(place);
-            },
-            child: Column(
-              mainAxisSize:
-                  MainAxisSize.min,
-              children: [
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration:
-                      BoxDecoration(
-                    color:
-                        const Color(0xFF2E7D32),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white,
-                      width: 3,
+            onTap: () => _showDetail(p),
+            child: Center(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                width: size,
+                height: size,
+                decoration: BoxDecoration(
+                  color: p.category.color,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.white, width: 3),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x33000000),
+                      blurRadius: 8,
+                      offset: Offset(0, 3),
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black
-                            .withOpacity(0.2),
-                        blurRadius: 8,
-                        offset:
-                            const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    place.icon,
-                    color: Colors.white,
-                    size: 19,
-                  ),
+                  ],
                 ),
-                Container(
-                  width: 0,
-                  height: 0,
-                  decoration:
-                      const BoxDecoration(
-                    border: Border(
-                      left: BorderSide(
-                        color:
-                            Colors.transparent,
-                        width: 5,
-                      ),
-                      right: BorderSide(
-                        color:
-                            Colors.transparent,
-                        width: 5,
-                      ),
-                      top: BorderSide(
-                        color:
-                            Color(0xFF2E7D32),
-                        width: 7,
-                      ),
-                    ),
-                  ),
+                child: Icon(
+                  p.category.icon,
+                  color: AppColors.white,
+                  size: selected ? 22 : 17,
                 ),
-              ],
+              ),
             ),
           ),
         ),
       );
     }
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        20,
-        12,
-        20,
-        22,
+    return FlutterMap(
+      mapController: _mapController,
+      options: MapOptions(
+        initialCenter: _user ?? _fallbackCenter,
+        initialZoom: 13.5,
+        minZoom: 4,
+        maxZoom: 19,
       ),
-      child: Container(
-        height: 290,
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          color: const Color(0xFFE4E9E5),
-          borderRadius:
-              BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color:
-                  Colors.black.withOpacity(0.07),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
+      children: [
+        TileLayer(
+          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          userAgentPackageName: 'com.example.pilara',
         ),
-        child: Stack(
-          children: [
-            FlutterMap(
-              mapController: _mapController,
-              options: MapOptions(
-                initialCenter:
-                    _currentLocation,
-                initialZoom: 13.5,
-                minZoom: 4,
-                maxZoom: 19,
-              ),
-              children: [
-                TileLayer(
-                  urlTemplate:
-                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName:
-                      'com.example.pilara',
-                ),
-                MarkerLayer(
-                  markers: markers,
-                ),
-                RichAttributionWidget(
-                  attributions: [
-                    TextSourceAttribution(
-                      'OpenStreetMap contributors',
-                    ),
-                  ],
-                ),
-              ],
-            ),
+        MarkerLayer(markers: markers),
+      ],
+    );
+  }
 
-            // Label data demo.
-            Positioned(
-              top: 12,
-              left: 12,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(
-                  horizontal: 11,
-                  vertical: 7,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white
-                      .withOpacity(0.94),
-                  borderRadius:
-                      BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black
-                          .withOpacity(0.08),
-                      blurRadius: 8,
+  Widget _buildLocateButton() {
+    return Material(
+      color: AppColors.white,
+      shape: const CircleBorder(),
+      elevation: 3,
+      shadowColor: const Color(0x33000000),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: _recenter,
+        child: SizedBox(
+          width: 48,
+          height: 48,
+          child: Center(
+            child: _loadingLocation
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.2,
+                      color: AppColors.primaryGreen,
                     ),
-                  ],
-                ),
-                child: const Row(
-                  mainAxisSize:
-                      MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.layers_rounded,
-                      size: 14,
-                      color:
-                          Color(0xFF2E7D32),
-                    ),
-                    SizedBox(width: 5),
-                    Text(
-                      'Titik pengelolaan',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight:
-                            FontWeight.w700,
-                        color:
-                            Color(0xFF344238),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Loading GPS.
-            if (_isLoadingLocation)
-              Positioned(
-                top: 12,
-                right: 12,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(
-                    horizontal: 11,
-                    vertical: 7,
+                  )
+                : Icon(
+                    _user != null
+                        ? Icons.my_location_rounded
+                        : Icons.location_searching_rounded,
+                    color: AppColors.primaryGreen,
+                    size: 22,
                   ),
-                  decoration: BoxDecoration(
-                    color: Colors.white
-                        .withOpacity(0.94),
-                    borderRadius:
-                        BorderRadius.circular(20),
-                  ),
-                  child: const Row(
-                    mainAxisSize:
-                        MainAxisSize.min,
-                    children: [
-                      SizedBox(
-                        width: 13,
-                        height: 13,
-                        child:
-                            CircularProgressIndicator(
-                          strokeWidth: 2,
-                        ),
-                      ),
-                      SizedBox(width: 6),
-                      Text(
-                        'Mencari lokasi...',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight:
-                              FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-            // Tombol center location.
-            Positioned(
-              right: 12,
-              bottom: 12,
-              child: Material(
-                color: Colors.white,
-                borderRadius:
-                    BorderRadius.circular(14),
-                elevation: 3,
-                child: InkWell(
-                  borderRadius:
-                      BorderRadius.circular(14),
-                  onTap:
-                      _centerToCurrentLocation,
-                  child: const SizedBox(
-                    width: 46,
-                    height: 46,
-                    child: Icon(
-                      Icons.my_location_rounded,
-                      color:
-                          Color(0xFF2E7D32),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildNearbyHeader(int count) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        20,
-        0,
-        20,
-        13,
-      ),
-      child: Row(
-        children: [
-          const Expanded(
-            child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Lokasi terdekat',
-                  style: TextStyle(
-                    fontSize: 19,
-                    fontWeight:
-                        FontWeight.w800,
-                    color:
-                        Color(0xFF17231A),
-                  ),
-                ),
-                SizedBox(height: 3),
-                Text(
-                  'Pilih lokasi sesuai jenis sampahmu.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color:
-                        Color(0xFF758078),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding:
-                const EdgeInsets.symmetric(
-              horizontal: 10,
-              vertical: 7,
-            ),
-            decoration: BoxDecoration(
-              color:
-                  const Color(0xFFEAF5EC),
-              borderRadius:
-                  BorderRadius.circular(12),
-            ),
-            child: Text(
-              '$count lokasi',
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight:
-                    FontWeight.w700,
-                color:
-                    Color(0xFF2E7D32),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPlaceCard(
-    WastePointDummy place,
-  ) {
+  Widget _buildAttribution() {
     return GestureDetector(
-      onTap: () {
-        _showPlaceDetail(place);
-      },
+      onTap: () => unawaited(
+        launchUrl(
+          Uri.parse('https://www.openstreetmap.org/copyright'),
+          mode: LaunchMode.externalApplication,
+        ),
+      ),
       child: Container(
-        padding: const EdgeInsets.all(15),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius:
-              BorderRadius.circular(20),
-          border: Border.all(
-            color:
-                const Color(0xFFE8EDE9),
+          color: AppColors.white.withValues(alpha: 0.9),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Text(
+          '© OpenStreetMap',
+          style: TextStyle(fontSize: 10, color: _muted),
+        ),
+      ),
+    );
+  }
+
+  // ----------------------------------------------------------------
+  // SHEET DAFTAR
+  // ----------------------------------------------------------------
+
+  Widget _buildSheet(List<PilahLocation> places) {
+    return DraggableScrollableSheet(
+      controller: _sheetController,
+      initialChildSize: _sheetMid,
+      minChildSize: _sheetMin,
+      maxChildSize: _sheetMax,
+      snap: true,
+      snapSizes: const [_sheetMin, _sheetMid, _sheetMax],
+      builder: (context, scrollController) {
+        final now = DateTime.now();
+        return Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: const BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            boxShadow: [
+              BoxShadow(
+                color: Color(0x1F000000),
+                blurRadius: 24,
+                offset: Offset(0, -4),
+              ),
+            ],
           ),
-          boxShadow: [
-            BoxShadow(
-              color:
-                  Colors.black.withOpacity(0.035),
-              blurRadius: 14,
-              offset: const Offset(0, 5),
+          child: CustomScrollView(
+            controller: scrollController,
+            physics: const ClampingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
             ),
-          ],
+            slivers: [
+              SliverToBoxAdapter(child: _buildSheetHeader(places.length)),
+              if (_user == null && !_loadingLocation)
+                SliverToBoxAdapter(child: _buildLocationPrompt()),
+              if (places.isEmpty)
+                SliverToBoxAdapter(child: _buildEmptyState())
+              else
+                SliverList.separated(
+                  itemCount: places.length,
+                  separatorBuilder: (_, __) => const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20),
+                    child: Divider(height: 1, thickness: 1, color: _line),
+                  ),
+                  itemBuilder: (context, i) =>
+                      _buildPlaceTile(places[i], now),
+                ),
+              const SliverToBoxAdapter(child: SizedBox(height: 32)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSheetHeader(int count) {
+    return Column(
+      children: [
+        const SizedBox(height: 10),
+        Container(
+          width: 36,
+          height: 4,
+          decoration: BoxDecoration(
+            color: const Color(0xFFD9DFDB),
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _user != null ? 'Terdekat dari kamu' : 'Titik pilah',
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        color: _ink,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$count lokasi',
+                      style: const TextStyle(fontSize: 12.5, color: _muted),
+                    ),
+                  ],
+                ),
+              ),
+              if (_category != null || _openOnly || _query.isNotEmpty)
+                TextButton(
+                  onPressed: _resetFilters,
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.primaryGreen,
+                    textStyle: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  child: const Text('Reset'),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLocationPrompt() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
+        decoration: BoxDecoration(
+          color: AppColors.mint,
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
-          crossAxisAlignment:
-              CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color:
-                    const Color(0xFFEAF5EC),
-                borderRadius:
-                    BorderRadius.circular(16),
-              ),
-              child: Icon(
-                place.icon,
-                color:
-                    const Color(0xFF2E7D32),
-                size: 25,
+            const Icon(
+              Icons.location_off_rounded,
+              color: AppColors.primaryGreen,
+              size: 20,
+            ),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'Aktifkan lokasi untuk melihat jarak dan urutan terdekat.',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  height: 1.35,
+                  fontWeight: FontWeight.w600,
+                  color: _ink,
+                ),
               ),
             ),
-            const SizedBox(width: 13),
+            const SizedBox(width: 8),
+            _ActionButton(
+              label: 'Aktifkan',
+              height: 34,
+              fontSize: 12.5,
+              radius: 17,
+              onTap: _getCurrentLocation,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPlaceTile(PilahLocation p, DateTime now) {
+    final distance = _distanceOf(p);
+    final open = p.isOpenAt(now);
+
+    return InkWell(
+      onTap: () => _showDetail(p),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 14, 12, 14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: p.category.tint,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(p.category.icon, color: p.category.color, size: 22),
+            ),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          place.name,
-                          maxLines: 1,
-                          overflow:
-                              TextOverflow.ellipsis,
-                          style:
-                              const TextStyle(
-                            fontSize: 15,
-                            fontWeight:
-                                FontWeight.w800,
-                            color:
-                                Color(0xFF1B261D),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      const Icon(
-                        Icons
-                            .chevron_right_rounded,
-                        size: 20,
-                        color:
-                            Color(0xFF9AA39C),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 5),
                   Text(
-                    place.address,
+                    p.name,
                     maxLines: 1,
-                    overflow:
-                        TextOverflow.ellipsis,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 11,
-                      color:
-                          Color(0xFF7B857D),
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w700,
+                      color: _ink,
                     ),
                   ),
-                  const SizedBox(height: 9),
-                  Wrap(
-                    spacing: 5,
-                    runSpacing: 5,
+                  const SizedBox(height: 2),
+                  Text(
+                    '${p.category.label}  ·  ${p.city}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 12.5, color: _muted),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
                     children: [
-                      _smallTag(
-                        Icons.near_me_rounded,
-                        _getDistance(place),
-                      ),
-                      _smallTag(
-                        Icons.star_rounded,
-                        place.rating
-                            .toStringAsFixed(1),
-                      ),
-                      ...place.acceptedWaste
-                          .map(
-                        (waste) =>
-                            _wasteTag(waste),
+                      _StatusDot(open: open, label: p.statusLabel(now)),
+                      if (distance != null) ...[
+                        const SizedBox(width: 12),
+                        _Meta(icon: Icons.near_me_rounded, text: distance),
+                      ],
+                      const SizedBox(width: 12),
+                      _Meta(
+                        icon: Icons.star_rounded,
+                        text: p.rating.toStringAsFixed(1),
+                        iconColor: const Color(0xFFF2A100),
                       ),
                     ],
                   ),
                 ],
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _smallTag(
-    IconData icon,
-    String text,
-  ) {
-    return Container(
-      padding:
-          const EdgeInsets.symmetric(
-        horizontal: 7,
-        vertical: 5,
-      ),
-      decoration: BoxDecoration(
-        color:
-            const Color(0xFFF4F6F4),
-        borderRadius:
-            BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize:
-            MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            size: 12,
-            color:
-                const Color(0xFF647066),
-          ),
-          const SizedBox(width: 4),
-          Text(
-            text,
-            style: const TextStyle(
-              fontSize: 9.5,
-              fontWeight:
-                  FontWeight.w700,
-              color:
-                  Color(0xFF647066),
+            IconButton(
+              tooltip: 'Buka rute',
+              onPressed: () => _openRoute(p),
+              icon: const Icon(
+                Icons.directions_rounded,
+                color: AppColors.primaryGreen,
+              ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _wasteTag(String waste) {
-    Color background;
-    Color foreground;
-
-    switch (waste) {
-      case 'Organik':
-        background =
-            const Color(0xFFE8F5E9);
-        foreground =
-            const Color(0xFF2E7D32);
-        break;
-
-      case 'Anorganik':
-        background =
-            const Color(0xFFE8F0FE);
-        foreground =
-            const Color(0xFF315FA8);
-        break;
-
-      case 'B3':
-        background =
-            const Color(0xFFFFF2DD);
-        foreground =
-            const Color(0xFFAA6A00);
-        break;
-
-      default:
-        background =
-            const Color(0xFFF0ECF8);
-        foreground =
-            const Color(0xFF7156A3);
-    }
-
-    return Container(
-      padding:
-          const EdgeInsets.symmetric(
-        horizontal: 8,
-        vertical: 5,
-      ),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius:
-            BorderRadius.circular(8),
-      ),
-      child: Text(
-        waste,
-        style: TextStyle(
-          fontSize: 9.5,
-          fontWeight:
-              FontWeight.w700,
-          color: foreground,
+          ],
         ),
       ),
     );
@@ -1214,47 +845,357 @@ class _PilahScreenState extends State<PilahScreen> {
 
   Widget _buildEmptyState() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        20,
-        10,
-        20,
-        30,
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(28),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius:
-              BorderRadius.circular(22),
-        ),
-        child: const Column(
-          children: [
-            Icon(
-              Icons.search_off_rounded,
-              size: 48,
-              color: Color(0xFF9BA49D),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+      child: Column(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: const BoxDecoration(
+              color: AppColors.mint,
+              shape: BoxShape.circle,
             ),
-            SizedBox(height: 12),
-            Text(
-              'Lokasi tidak ditemukan',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight:
-                    FontWeight.w800,
-                color:
-                    Color(0xFF263128),
+            child: const Icon(
+              Icons.search_off_rounded,
+              color: AppColors.primaryGreen,
+              size: 28,
+            ),
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'Tidak ada lokasi yang cocok',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: _ink,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Ubah kata kunci atau hapus filter.',
+            style: TextStyle(fontSize: 12.5, color: _muted),
+          ),
+          const SizedBox(height: 16),
+          _ActionButton(
+            label: 'Reset filter',
+            background: AppColors.mint,
+            foreground: AppColors.primaryGreen,
+            height: 40,
+            fontSize: 13,
+            radius: 20,
+            onTap: _resetFilters,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ----------------------------------------------------------------
+  // DETAIL
+  // ----------------------------------------------------------------
+
+  void _showDetail(PilahLocation p) {
+    setState(() => _selectedId = p.id);
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: const Color(0x40000000),
+      builder: (sheetContext) {
+        final now = DateTime.now();
+        final open = p.isOpenAt(now);
+        final distance = _distanceOf(p);
+        final maxHeight = MediaQuery.of(sheetContext).size.height * 0.88;
+
+        return Container(
+          constraints: BoxConstraints(maxHeight: maxHeight),
+          decoration: const BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD9DFDB),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Kategori + status
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: p.category.tint,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(p.category.icon,
+                                size: 14, color: p.category.color),
+                            const SizedBox(width: 5),
+                            Text(
+                              p.category.label,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: p.category.color,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      _StatusDot(open: open, label: p.statusLabel(now)),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    p.name,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      height: 1.2,
+                      fontWeight: FontWeight.w800,
+                      color: _ink,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    p.description,
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      height: 1.5,
+                      color: _muted,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Statistik
+                  IntrinsicHeight(
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _Stat(
+                            label: 'Jarak',
+                            value: distance ?? '-',
+                          ),
+                        ),
+                        const VerticalDivider(
+                            width: 1, thickness: 1, color: _line),
+                        Expanded(
+                          child: _Stat(
+                            label: 'Rating',
+                            value: p.rating.toStringAsFixed(1),
+                          ),
+                        ),
+                        const VerticalDivider(
+                            width: 1, thickness: 1, color: _line),
+                        Expanded(
+                          child: _Stat(
+                            label: 'Jam buka',
+                            value: '${p.openHour}–${p.closeHour}',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Divider(height: 1, thickness: 1, color: _line),
+                  const SizedBox(height: 16),
+
+                  // Info
+                  _InfoRow(
+                    icon: Icons.place_outlined,
+                    text: '${p.address}, ${p.city}',
+                  ),
+                  const SizedBox(height: 12),
+                  _InfoRow(
+                    icon: Icons.event_available_outlined,
+                    text: _closedDaysLabel(p.closedDays),
+                  ),
+                  if (p.phone != null) ...[
+                    const SizedBox(height: 12),
+                    _InfoRow(icon: Icons.call_outlined, text: p.phone!),
+                  ],
+
+                  if (p.accepts.isNotEmpty) ...[
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Yang diterima',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: _ink,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final item in p.accepts)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 7,
+                            ),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: _line),
+                            ),
+                            child: Text(
+                              item,
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                                color: _ink,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      if (p.phone != null) ...[
+                        _ActionButton(
+                          label: 'Telepon',
+                          icon: Icons.call_rounded,
+                          background: AppColors.mint,
+                          foreground: AppColors.primaryGreen,
+                          height: 52,
+                          radius: 26,
+                          onTap: () => _call(p),
+                        ),
+                        const SizedBox(width: 10),
+                      ],
+                      Expanded(
+                        child: _ActionButton(
+                          label: 'Buka rute',
+                          icon: Icons.directions_rounded,
+                          expand: true,
+                          height: 52,
+                          radius: 26,
+                          onTap: () {
+                            Navigator.pop(sheetContext);
+                            _openRoute(p);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Center(
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.pop(sheetContext);
+                        _focusOnMap(p);
+                      },
+                      style: TextButton.styleFrom(
+                        foregroundColor: _muted,
+                        textStyle: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      child: const Text('Lihat di peta'),
+                    ),
+                  ),
+                ],
               ),
             ),
-            SizedBox(height: 6),
+          ),
+        );
+      },
+    ).whenComplete(() {
+      if (mounted) setState(() => _selectedId = null);
+    });
+  }
+}
+
+// ==================================================================
+// WIDGET KECIL
+// ==================================================================
+
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final Color? dot;
+  final IconData? icon;
+
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.dot,
+    this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = selected ? AppColors.white : _ink;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primaryGreen : AppColors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x14000000),
+              blurRadius: 10,
+              offset: Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (dot != null) ...[
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: selected ? AppColors.white : dot,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 6),
+            ],
+            if (icon != null) ...[
+              Icon(icon, size: 15, color: fg),
+              const SizedBox(width: 5),
+            ],
             Text(
-              'Coba gunakan kata kunci atau kategori lainnya.',
-              textAlign:
-                  TextAlign.center,
+              label,
               style: TextStyle(
-                fontSize: 12,
-                color:
-                    Color(0xFF7B857D),
-                height: 1.4,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: fg,
               ),
             ),
           ],
@@ -1262,452 +1203,191 @@ class _PilahScreenState extends State<PilahScreen> {
       ),
     );
   }
+}
 
-  // ============================================================
-  // DETAIL BOTTOM SHEET
-  // ============================================================
+class _StatusDot extends StatelessWidget {
+  final bool open;
+  final String label;
 
-  void _showPlaceDetail(
-    WastePointDummy place,
-  ) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor:
-          Colors.transparent,
-      builder: (context) {
-        return Container(
-          padding:
-              const EdgeInsets.fromLTRB(
-            20,
-            10,
-            20,
-            25,
+  const _StatusDot({required this.open, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = open ? _openColor : _muted;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 7,
+          height: 7,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: color,
           ),
-          decoration:
-              const BoxDecoration(
-            color: Colors.white,
-            borderRadius:
-                BorderRadius.vertical(
-              top: Radius.circular(28),
-            ),
-          ),
-          child: SafeArea(
-            top: false,
-            child: Column(
-              mainAxisSize:
-                  MainAxisSize.min,
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 42,
-                    height: 4,
-                    decoration:
-                        BoxDecoration(
-                      color: const Color(
-                          0xFFD7DDD8),
-                      borderRadius:
-                          BorderRadius.circular(
-                        10,
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                Row(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 58,
-                      height: 58,
-                      decoration:
-                          BoxDecoration(
-                        color: const Color(
-                            0xFFEAF5EC),
-                        borderRadius:
-                            BorderRadius.circular(
-                          17,
-                        ),
-                      ),
-                      child: Icon(
-                        place.icon,
-                        color: const Color(
-                            0xFF2E7D32),
-                        size: 29,
-                      ),
-                    ),
-                    const SizedBox(width: 13),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            place.name,
-                            style:
-                                const TextStyle(
-                              fontSize: 19,
-                              fontWeight:
-                                  FontWeight.w800,
-                              color: Color(
-                                  0xFF17231A),
-                            ),
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            place.address,
-                            style:
-                                const TextStyle(
-                              fontSize: 12,
-                              color: Color(
-                                  0xFF788279),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 20),
-
-                Row(
-                  children: [
-                    Expanded(
-                      child: _detailInfo(
-                        Icons.near_me_rounded,
-                        'Jarak',
-                        _getDistance(place),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _detailInfo(
-                        Icons.star_rounded,
-                        'Rating',
-                        place.rating
-                            .toStringAsFixed(1),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _detailInfo(
-                        Icons.access_time_rounded,
-                        'Jam',
-                        place.openTime,
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 18),
-
-                const Text(
-                  'Menerima sampah',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight:
-                        FontWeight.w800,
-                    color:
-                        Color(0xFF273228),
-                  ),
-                ),
-
-                const SizedBox(height: 9),
-
-                Wrap(
-                  spacing: 7,
-                  runSpacing: 7,
-                  children: place
-                      .acceptedWaste
-                      .map(
-                        (waste) =>
-                            _largeWasteTag(waste),
-                      )
-                      .toList(),
-                ),
-
-                const SizedBox(height: 18),
-
-                const Text(
-                  'Tentang lokasi',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight:
-                        FontWeight.w800,
-                    color:
-                        Color(0xFF273228),
-                  ),
-                ),
-
-                const SizedBox(height: 7),
-
-                Text(
-                  place.description,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    height: 1.5,
-                    color:
-                        Color(0xFF737D75),
-                  ),
-                ),
-
-                const SizedBox(height: 22),
-
-                SizedBox(
-                  width: double.infinity,
-                  height: 53,
-                  child:
-                      ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _openRoute(place);
-                    },
-                    style:
-                        ElevatedButton.styleFrom(
-                      backgroundColor:
-                          const Color(
-                              0xFF2E7D32),
-                      foregroundColor:
-                          Colors.white,
-                      elevation: 0,
-                      shape:
-                          RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(
-                          16,
-                        ),
-                      ),
-                    ),
-                    icon: const Icon(
-                      Icons.directions_rounded,
-                      size: 21,
-                    ),
-                    label: const Text(
-                      'Buka Rute',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight:
-                            FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 9),
-
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child:
-                      OutlinedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-
-                      _mapController.move(
-                        LatLng(
-                          place.latitude,
-                          place.longitude,
-                        ),
-                        16,
-                      );
-                    },
-                    style:
-                        OutlinedButton.styleFrom(
-                      foregroundColor:
-                          const Color(
-                              0xFF2E7D32),
-                      side:
-                          const BorderSide(
-                        color: Color(
-                            0xFFB9D2BC),
-                      ),
-                      shape:
-                          RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(
-                          16,
-                        ),
-                      ),
-                    ),
-                    child: const Text(
-                      'Lihat di Peta',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight:
-                            FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+        ),
+      ],
     );
   }
+}
 
-  Widget _detailInfo(
-    IconData icon,
-    String title,
-    String value,
-  ) {
-    return Container(
-      padding:
-          const EdgeInsets.symmetric(
-        horizontal: 9,
-        vertical: 11,
-      ),
-      decoration: BoxDecoration(
-        color:
-            const Color(0xFFF5F7F5),
-        borderRadius:
-            BorderRadius.circular(13),
-      ),
+class _Meta extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  final Color iconColor;
+
+  const _Meta({
+    required this.icon,
+    required this.text,
+    this.iconColor = AppColors.primaryGreen,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: iconColor),
+        const SizedBox(width: 3),
+        Text(
+          text,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: _ink,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _Stat extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _Stat({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       child: Column(
         children: [
-          Icon(
-            icon,
-            size: 18,
-            color:
-                const Color(0xFF2E7D32),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 9,
-              color:
-                  Color(0xFF89928B),
-            ),
-          ),
-          const SizedBox(height: 2),
           Text(
             value,
             maxLines: 1,
-            overflow:
-                TextOverflow.ellipsis,
-            textAlign:
-                TextAlign.center,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              fontSize: 10,
-              fontWeight:
-                  FontWeight.w800,
-              color:
-                  Color(0xFF354037),
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: _ink,
             ),
           ),
+          const SizedBox(height: 3),
+          Text(label, style: const TextStyle(fontSize: 11.5, color: _muted)),
         ],
       ),
     );
   }
+}
 
-  Widget _largeWasteTag(
-    String waste,
-  ) {
-    Color background;
-    Color foreground;
+class _InfoRow extends StatelessWidget {
+  final IconData icon;
+  final String text;
 
-    switch (waste) {
-      case 'Organik':
-        background =
-            const Color(0xFFE8F5E9);
-        foreground =
-            const Color(0xFF2E7D32);
-        break;
+  const _InfoRow({required this.icon, required this.text});
 
-      case 'Anorganik':
-        background =
-            const Color(0xFFE8F0FE);
-        foreground =
-            const Color(0xFF315FA8);
-        break;
-
-      case 'B3':
-        background =
-            const Color(0xFFFFF2DD);
-        foreground =
-            const Color(0xFFAA6A00);
-        break;
-
-      default:
-        background =
-            const Color(0xFFF0ECF8);
-        foreground =
-            const Color(0xFF7156A3);
-    }
-
-    return Container(
-      padding:
-          const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 7,
-      ),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius:
-            BorderRadius.circular(10),
-      ),
-      child: Text(
-        waste,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight:
-              FontWeight.w700,
-          color: foreground,
-        ),
-      ),
-    );
-  }
-
-  // ============================================================
-  // SNACKBAR
-  // ============================================================
-
-  void _showLocationMessage(
-    String message, {
-    String? actionLabel,
-    Future<void> Function()? onAction,
-  }) {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context)
-        .hideCurrentSnackBar();
-
-    ScaffoldMessenger.of(context)
-        .showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight:
-                FontWeight.w600,
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 19, color: _muted),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 13.5,
+              height: 1.4,
+              fontWeight: FontWeight.w500,
+              color: _ink,
+            ),
           ),
         ),
-        behavior:
-            SnackBarBehavior.floating,
-        shape:
-            RoundedRectangleBorder(
-          borderRadius:
-              BorderRadius.circular(12),
+      ],
+    );
+  }
+}
+
+// Tombol sendiri (Material + InkWell) agar tidak terpengaruh
+// ElevatedButtonTheme global.
+class _ActionButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+  final IconData? icon;
+  final Color background;
+  final Color foreground;
+  final bool expand;
+  final double height;
+  final double fontSize;
+  final double radius;
+
+  const _ActionButton({
+    required this.label,
+    required this.onTap,
+    this.icon,
+    this.background = AppColors.primaryGreen,
+    this.foreground = AppColors.white,
+    this.expand = false,
+    this.height = 46,
+    this.fontSize = 14,
+    this.radius = 14,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: background,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius)),
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          height: height,
+          width: expand ? double.infinity : null,
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: fontSize + 4, color: foreground),
+                const SizedBox(width: 6),
+              ],
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: fontSize,
+                    fontWeight: FontWeight.w700,
+                    color: foreground,
+                    height: 1.1,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-        action: actionLabel != null
-            ? SnackBarAction(
-                label: actionLabel,
-                onPressed: () {
-                  if (onAction != null) {
-                    unawaited(onAction());
-                  }
-                },
-              )
-            : null,
       ),
     );
   }
