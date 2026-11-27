@@ -33,8 +33,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final name = nameController.text.trim();
     final email = emailController.text.trim();
     final password = passwordController.text;
-    final confirmPassword =
-        confirmPasswordController.text.trim();
+    final confirmPassword = confirmPasswordController.text.trim();
 
     if (name.isEmpty ||
         email.isEmpty ||
@@ -89,11 +88,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.green[50],
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        foregroundColor: Colors.black,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -102,7 +101,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             width: 350,
             padding: const EdgeInsets.all(25),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(20),
               boxShadow: const [
                 BoxShadow(
@@ -118,28 +117,22 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   'assets/images/LogoPilara.png',
                   height: 100,
                 ),
-
                 const SizedBox(height: 15),
-
-                const Text(
+                Text(
                   'Sign Up',
                   style: TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-
                 const SizedBox(height: 5),
-
-                const Text(
+                Text(
                   'Buat akun Pilara baru',
                   style: TextStyle(
-                    color: Colors.grey,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
-
                 const SizedBox(height: 25),
-
                 TextField(
                   controller: nameController,
                   decoration: const InputDecoration(
@@ -148,9 +141,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     border: OutlineInputBorder(),
                   ),
                 ),
-
                 const SizedBox(height: 15),
-
                 TextField(
                   controller: emailController,
                   keyboardType: TextInputType.emailAddress,
@@ -160,9 +151,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     border: OutlineInputBorder(),
                   ),
                 ),
-
                 const SizedBox(height: 15),
-
                 TextField(
                   controller: passwordController,
                   obscureText: !isPasswordVisible,
@@ -178,23 +167,19 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       ),
                       onPressed: () {
                         setState(() {
-                          isPasswordVisible =
-                              !isPasswordVisible;
+                          isPasswordVisible = !isPasswordVisible;
                         });
                       },
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 15),
-
                 TextField(
                   controller: confirmPasswordController,
                   obscureText: !isConfirmPasswordVisible,
                   decoration: InputDecoration(
                     labelText: 'Konfirmasi Password',
-                    prefixIcon:
-                        const Icon(Icons.lock_outline),
+                    prefixIcon: const Icon(Icons.lock_outline),
                     border: const OutlineInputBorder(),
                     suffixIcon: IconButton(
                       icon: Icon(
@@ -204,16 +189,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       ),
                       onPressed: () {
                         setState(() {
-                          isConfirmPasswordVisible =
-                              !isConfirmPasswordVisible;
+                          isConfirmPasswordVisible = !isConfirmPasswordVisible;
                         });
                       },
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 20),
-
                 SizedBox(
                   width: double.infinity,
                   height: 50,
@@ -234,15 +216,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           ),
                   ),
                 ),
-
                 const SizedBox(height: 10),
-
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text(
+                    Text(
                       'Sudah punya akun?',
-                      style: TextStyle(color: Colors.grey),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                     TextButton(
                       onPressed: () {

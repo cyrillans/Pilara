@@ -73,7 +73,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.green[50],
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
       body: pages[currentIndex],
       floatingActionButton: currentIndex == 0
@@ -324,7 +324,7 @@ class _HomeContentState extends State<HomeContent> {
                       'Mari jaga bumi bersama.',
                       style: TextStyle(
                         fontSize: 15,
-                        color: Colors.grey,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -335,7 +335,7 @@ class _HomeContentState extends State<HomeContent> {
                 // ------------------------------------------------
 
                 Material(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.surface,
                   shape: const CircleBorder(),
                   child: InkWell(
                     onTap: () {
@@ -397,13 +397,10 @@ class _HomeContentState extends State<HomeContent> {
                       size: 30,
                     ),
                   ),
-
                   const SizedBox(width: 15),
-
                   Expanded(
                     child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
                           'Poin Pilara',
@@ -426,7 +423,6 @@ class _HomeContentState extends State<HomeContent> {
                       ],
                     ),
                   ),
-
                   const Icon(
                     Icons.arrow_forward_ios,
                     color: Colors.white,
@@ -452,10 +448,10 @@ class _HomeContentState extends State<HomeContent> {
 
             const SizedBox(height: 8),
 
-            const Text(
+            Text(
               'Kenali jenis sampah dan tempatkan dengan benar.',
               style: TextStyle(
-                color: Colors.grey,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
                 fontSize: 14,
               ),
             ),
@@ -474,24 +470,20 @@ class _HomeContentState extends State<HomeContent> {
                       dummyWasteCategories[0]['icon'],
                     ),
                     title: dummyWasteCategories[0]['title'],
-                    subtitle:
-                        dummyWasteCategories[0]['subtitle'],
+                    subtitle: dummyWasteCategories[0]['subtitle'],
                     color: _getWasteColor(
                       dummyWasteCategories[0]['color'],
                     ),
                   ),
                 ),
-
                 const SizedBox(width: 12),
-
                 Expanded(
                   child: _WasteCategory(
                     icon: _getWasteIcon(
                       dummyWasteCategories[1]['icon'],
                     ),
                     title: dummyWasteCategories[1]['title'],
-                    subtitle:
-                        dummyWasteCategories[1]['subtitle'],
+                    subtitle: dummyWasteCategories[1]['subtitle'],
                     color: _getWasteColor(
                       dummyWasteCategories[1]['color'],
                     ),
@@ -514,24 +506,20 @@ class _HomeContentState extends State<HomeContent> {
                       dummyWasteCategories[2]['icon'],
                     ),
                     title: dummyWasteCategories[2]['title'],
-                    subtitle:
-                        dummyWasteCategories[2]['subtitle'],
+                    subtitle: dummyWasteCategories[2]['subtitle'],
                     color: _getWasteColor(
                       dummyWasteCategories[2]['color'],
                     ),
                   ),
                 ),
-
                 const SizedBox(width: 12),
-
                 Expanded(
                   child: _WasteCategory(
                     icon: _getWasteIcon(
                       dummyWasteCategories[3]['icon'],
                     ),
                     title: dummyWasteCategories[3]['title'],
-                    subtitle:
-                        dummyWasteCategories[3]['subtitle'],
+                    subtitle: dummyWasteCategories[3]['subtitle'],
                     color: _getWasteColor(
                       dummyWasteCategories[3]['color'],
                     ),
@@ -583,10 +571,10 @@ class _HomeContentState extends State<HomeContent> {
 
             const SizedBox(height: 8),
 
-            const Text(
+            Text(
               'Tips sederhana untuk menjaga lingkungan.',
               style: TextStyle(
-                color: Colors.grey,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
                 fontSize: 14,
               ),
             ),
@@ -673,7 +661,7 @@ class _HomeContentState extends State<HomeContent> {
                   horizontal: 20,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(18),
                 ),
                 child: Column(
@@ -692,13 +680,13 @@ class _HomeContentState extends State<HomeContent> {
                       ),
                     ),
                     const SizedBox(height: 5),
-                    const Text(
+                    Text(
                       'Hasil klasifikasi tersimpan di riwayat. '
                       'Poin diberikan setelah setoran terverifikasi.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 13,
-                        color: Colors.grey,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -751,8 +739,8 @@ class _NotificationSheet extends StatelessWidget {
         20,
         30,
       ),
-      decoration: const BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.vertical(
           top: Radius.circular(28),
         ),
@@ -771,10 +759,8 @@ class _NotificationSheet extends StatelessWidget {
               ),
             ),
           ),
-
           const SizedBox(height: 20),
-
-          const Row(
+          Row(
             children: [
               Icon(
                 Icons.notifications_rounded,
@@ -786,18 +772,17 @@ class _NotificationSheet extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ],
           ),
-
           const SizedBox(height: 20),
-
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.green.shade50,
+              color: Theme.of(context).colorScheme.surfaceContainerLow,
               borderRadius: BorderRadius.circular(18),
             ),
             child: Column(
@@ -816,11 +801,11 @@ class _NotificationSheet extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 5),
-                const Text(
+                Text(
                   'Notifikasi aktivitas Pilara akan muncul di sini.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Colors.grey,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     fontSize: 13,
                   ),
                 ),
@@ -855,7 +840,7 @@ class _WasteCategory extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(18),
         boxShadow: const [
           BoxShadow(
@@ -880,9 +865,7 @@ class _WasteCategory extends StatelessWidget {
               color: color[700],
             ),
           ),
-
           const SizedBox(height: 12),
-
           Text(
             title,
             style: const TextStyle(
@@ -890,14 +873,12 @@ class _WasteCategory extends StatelessWidget {
               fontSize: 15,
             ),
           ),
-
           const SizedBox(height: 4),
-
           Text(
             subtitle,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
-              color: Colors.grey,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -930,7 +911,7 @@ class _ArticleCard extends StatelessWidget {
       child: Container(
         width: 250,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(18),
           boxShadow: const [
             BoxShadow(
@@ -1022,7 +1003,7 @@ class _ActivityItem extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(15),
       ),
       child: Row(
@@ -1039,13 +1020,10 @@ class _ActivityItem extends StatelessWidget {
               color: Colors.green[700],
             ),
           ),
-
           const SizedBox(width: 12),
-
           Expanded(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
@@ -1053,20 +1031,17 @@ class _ActivityItem extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-
                 const SizedBox(height: 4),
-
                 Text(
                   subtitle,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
             ),
           ),
-
           Text(
             points,
             style: TextStyle(
@@ -1121,11 +1096,11 @@ IconData _getActivityIcon(String icon) {
 }
 
 String _activityIconName(String wasteType) => switch (wasteType) {
-  'Organik' => 'eco',
-  'B3' => 'warning',
-  'Anorganik' => 'recycling',
-  _ => 'delete',
-};
+      'Organik' => 'eco',
+      'B3' => 'warning',
+      'Anorganik' => 'recycling',
+      _ => 'delete',
+    };
 
 class _DashboardMessage extends StatelessWidget {
   const _DashboardMessage({
@@ -1140,19 +1115,19 @@ class _DashboardMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        children: [
-          Text(message, textAlign: TextAlign.center),
-          TextButton(onPressed: onPressed, child: Text(actionLabel)),
-        ],
-      ),
-  );
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Column(
+          children: [
+            Text(message, textAlign: TextAlign.center),
+            TextButton(onPressed: onPressed, child: Text(actionLabel)),
+          ],
+        ),
+      );
 }
 
 // ==================================================================

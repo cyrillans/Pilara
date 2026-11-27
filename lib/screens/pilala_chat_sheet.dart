@@ -215,7 +215,7 @@ class _PilalaChatSheetState extends State<PilalaChatSheet> {
         bottom: MediaQuery.viewInsetsOf(context).bottom,
       ),
       child: Material(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         child: Column(
           children: [
@@ -299,7 +299,9 @@ class _PilalaChatSheetState extends State<PilalaChatSheet> {
                         decoration: InputDecoration(
                           hintText: 'Tanya Pilala...',
                           filled: true,
-                          fillColor: Colors.grey.shade100,
+                          fillColor: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(24),
                             borderSide: BorderSide.none,
@@ -351,12 +353,15 @@ class _MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = message.isError
-        ? Colors.red.shade50
+        ? Theme.of(context).colorScheme.errorContainer
         : message.fromUser
-            ? Colors.green.shade700
-            : Colors.grey.shade100;
-    final foregroundColor =
-        message.isError || !message.fromUser ? Colors.black87 : Colors.white;
+            ? Theme.of(context).colorScheme.primary
+            : Theme.of(context).colorScheme.surfaceContainerLow;
+    final foregroundColor = message.isError
+        ? Theme.of(context).colorScheme.onErrorContainer
+        : message.fromUser
+            ? Theme.of(context).colorScheme.onPrimary
+            : Theme.of(context).colorScheme.onSurface;
 
     return Align(
       alignment:

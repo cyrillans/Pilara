@@ -1,7 +1,11 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import 'signup_screen.dart';
 import 'home_screen.dart';
+import '../services/google_auth_service.dart';
 import '../services/pilara_api.dart';
 
 class SignInScreen extends StatefulWidget {
@@ -63,10 +67,51 @@ class _SignInScreenState extends State<SignInScreen> {
     }
   }
 
+  Future<void> _loginWithGoogle() async {
+    if (_isSubmitting) return;
+    setState(() => _isSubmitting = true);
+    try {
+      final idToken =
+          await GoogleAuthService.instance.signInAndGetFirebaseIdToken();
+      await PilaraApi.instance.loginWithGoogle(firebaseIdToken: idToken);
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
+    } on GoogleSignInException catch (error) {
+      if (!mounted || error.code == GoogleSignInExceptionCode.canceled) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.description ?? 'Login Google gagal.'),
+        ),
+      );
+    } on FirebaseAuthException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.message ?? 'Login Firebase gagal.'),
+        ),
+      );
+    } on GoogleAuthFlowException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.green[50],
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
@@ -74,7 +119,7 @@ class _SignInScreenState extends State<SignInScreen> {
             width: 350,
             padding: const EdgeInsets.all(25),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(20),
               boxShadow: const [
                 BoxShadow(
@@ -95,7 +140,7 @@ class _SignInScreenState extends State<SignInScreen> {
                 const SizedBox(height: 15),
 
                 // TITLE
-                const Text(
+                Text(
                   'Sign In',
                   style: TextStyle(
                     fontSize: 26,
@@ -105,10 +150,10 @@ class _SignInScreenState extends State<SignInScreen> {
 
                 const SizedBox(height: 5),
 
-                const Text(
+                Text(
                   'Masuk ke akun Pilara Anda',
                   style: TextStyle(
-                    color: Colors.grey,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
 
@@ -147,8 +192,7 @@ class _SignInScreenState extends State<SignInScreen> {
                       ),
                       onPressed: () {
                         setState(() {
-                          isPasswordVisible =
-                              !isPasswordVisible;
+                          isPasswordVisible = !isPasswordVisible;
                         });
                       },
                     ),
@@ -179,16 +223,29 @@ class _SignInScreenState extends State<SignInScreen> {
                   ),
                 ),
 
+                if (defaultTargetPlatform == TargetPlatform.android) ...[
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: OutlinedButton.icon(
+                      onPressed: _isSubmitting ? null : _loginWithGoogle,
+                      icon: const Icon(Icons.g_mobiledata, size: 28),
+                      label: const Text('LANJUTKAN DENGAN GOOGLE'),
+                    ),
+                  ),
+                ],
+
                 const SizedBox(height: 15),
 
                 // SIGN UP
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text(
+                    Text(
                       'Belum punya akun?',
                       style: TextStyle(
-                        color: Colors.grey,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                     TextButton(
@@ -196,8 +253,7 @@ class _SignInScreenState extends State<SignInScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) =>
-                                const SignUpScreen(),
+                            builder: (context) => const SignUpScreen(),
                           ),
                         );
                       },

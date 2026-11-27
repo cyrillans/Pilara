@@ -31,8 +31,15 @@ class DeteksiSampahService {
       model: 'gemini-2.5-flash',
       systemInstruction: Content.system(
         'Kamu adalah ahli pemilahan sampah. Identifikasi objek utama pada '
-        'gambar, pilih satu kategori yang paling sesuai dari Organik, '
-        'Anorganik, atau B3, lalu berikan cara pengolahan yang aman dan praktis.',
+        'gambar dan pilih kategori berdasarkan bahan objeknya. Organik '
+        'mencakup sisa makanan dan daun; Anorganik mencakup plastik, kertas, '
+        'kaca, dan logam; B3 hanya untuk benda yang jelas mengandung bahan '
+        'berbahaya seperti baterai, lampu fluoresen, pestisida, cat, atau obat '
+        'kedaluwarsa. Jangan jadikan B3 sebagai kategori default dan jangan '
+        'mengategorikan plastik atau kemasan biasa sebagai B3. Jika gambar '
+        'kurang jelas, pilih kategori paling mungkin dan sebutkan '
+        'ketidakpastian secara singkat. Berikan cara pengolahan yang aman dan '
+        'praktis.',
       ),
       generationConfig: GenerationConfig(
         responseMimeType: 'application/json',

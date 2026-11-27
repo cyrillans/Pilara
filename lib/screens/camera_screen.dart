@@ -3,10 +3,9 @@ import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
-import 'package:tflite_flutter/tflite_flutter.dart';
 
+import '../services/deteksi_sampah_service.dart';
 import '../services/pilara_api.dart';
 
 class CameraScreen extends StatefulWidget {
@@ -18,45 +17,25 @@ class CameraScreen extends StatefulWidget {
 
 class _CameraScreenState extends State<CameraScreen> {
   CameraController? _cameraController;
-  Interpreter? _interpreter;
-
-  List<String> _labels = [];
+  final _detectionService = DeteksiSampahService();
 
   bool _isInitializing = true;
   bool _isProcessing = false;
 
   String? _imagePath;
   String? _prediction;
-  double? _confidence;
-
-  // Urutan class model
-  // 0 = anorganik
-  // 1 = b3
-  // 2 = lainnya
-  // 3 = organik
-  final List<String> _fallbackLabels = [
-    'anorganik',
-    'b3',
-    'lainnya',
-    'organik',
-  ];
+  String? _objectName;
+  String? _processingMethod;
 
   @override
   void initState() {
     super.initState();
-    _initializeCameraAndModel();
+    _initializeCamera();
   }
 
-  // =============================================================
-  // INITIALIZE CAMERA + MODEL
-  // =============================================================
-
-  Future<void> _initializeCameraAndModel() async {
+  Future<void> _initializeCamera() async {
+    CameraController? controller;
     try {
-      // =========================================================
-      // LOAD CAMERA
-      // =========================================================
-
       final cameras = await availableCameras();
 
       if (cameras.isEmpty) {
@@ -69,61 +48,25 @@ class _CameraScreenState extends State<CameraScreen> {
         orElse: () => cameras.first,
       );
 
-      final controller = CameraController(
+      final cameraController = CameraController(
         camera,
         ResolutionPreset.medium,
         enableAudio: false,
       );
-
-      await controller.initialize();
-
-      // =========================================================
-      // LOAD MODEL TFLITE
-      // =========================================================
-
-      final interpreter = await Interpreter.fromAsset(
-        'assets/models/model.tflite',
-      );
-
-      // =========================================================
-      // LOAD LABELS
-      // =========================================================
-
-      List<String> labels;
-
-      try {
-        final labelsText = await rootBundle.loadString(
-          'assets/models/labels.txt',
-        );
-
-        labels = labelsText
-            .split('\n')
-            .map((label) => label.trim())
-            .where((label) => label.isNotEmpty)
-            .toList();
-      } catch (_) {
-        labels = _fallbackLabels;
-      }
-
-      // Kalau jumlah label tidak sesuai model,
-      // gunakan fallback.
-      if (labels.length != 4) {
-        labels = _fallbackLabels;
-      }
+      controller = cameraController;
+      await cameraController.initialize();
 
       if (!mounted) {
-        controller.dispose();
-        interpreter.close();
+        await cameraController.dispose();
         return;
       }
 
       setState(() {
-        _cameraController = controller;
-        _interpreter = interpreter;
-        _labels = labels;
+        _cameraController = cameraController;
         _isInitializing = false;
       });
-    } catch (e) {
+    } on Exception catch (error) {
+      await controller?.dispose();
       if (!mounted) return;
 
       setState(() {
@@ -132,9 +75,7 @@ class _CameraScreenState extends State<CameraScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Gagal menyiapkan kamera: $e',
-          ),
+          content: Text('Gagal menyiapkan kamera: $error'),
         ),
       );
     }
@@ -165,7 +106,8 @@ class _CameraScreenState extends State<CameraScreen> {
       setState(() {
         _imagePath = photo.path;
         _prediction = null;
-        _confidence = null;
+        _objectName = null;
+        _processingMethod = null;
       });
 
       await _classifyImage(photo.path);
@@ -186,137 +128,27 @@ class _CameraScreenState extends State<CameraScreen> {
     }
   }
 
-  // =============================================================
-  // CLASSIFICATION
-  // =============================================================
-
   Future<void> _classifyImage(String path) async {
-    final interpreter = _interpreter;
-
-    if (interpreter == null) {
-      if (!mounted) return;
-
-      setState(() {
-        _isProcessing = false;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Model belum berhasil dimuat.',
-          ),
-        ),
-      );
-
-      return;
-    }
-
     try {
-      // =========================================================
-      // READ IMAGE
-      // =========================================================
-
-      final Uint8List imageBytes =
-          await File(path).readAsBytes();
-
-      final img.Image? decodedImage =
-          img.decodeImage(imageBytes);
-
-      if (decodedImage == null) {
-        throw Exception(
-          'Foto tidak dapat diproses.',
-        );
-      }
-
-      // =========================================================
-      // RESIZE IMAGE
-      // Model menggunakan input [1, 224, 224, 3]
-      // =========================================================
-
-      final img.Image resizedImage = img.copyResize(
-        decodedImage,
-        width: 224,
-        height: 224,
+      final imageBytes = _prepareImageForGemini(
+        await File(path).readAsBytes(),
       );
-
-      // =========================================================
-      // CONVERT IMAGE TO MODEL INPUT
-      // =========================================================
-
-      final input = List.generate(
-        1,
-        (_) => List.generate(
-          224,
-          (y) => List.generate(
-            224,
-            (x) {
-              final pixel = resizedImage.getPixel(
-                x,
-                y,
-              );
-
-              return [
-                (pixel.r - 127.5) / 127.5,
-                (pixel.g - 127.5) / 127.5,
-                (pixel.b - 127.5) / 127.5,
-              ];
-            },
-          ),
-        ),
+      final result = await _detectionService.detectWaste(
+        imageBytes: imageBytes,
+        mimeType: 'image/jpeg',
       );
-
-      // =========================================================
-      // MODEL OUTPUT
-      // =========================================================
-
-      final output = [
-        List<double>.filled(
-          4,
-          0,
-        ),
-      ];
-
-      interpreter.run(
-        input,
-        output,
-      );
-
-      final scores = output[0];
-
-      // =========================================================
-      // CARI SCORE TERBESAR
-      // =========================================================
-
-      int bestIndex = 0;
-      double bestScore = scores[0];
-
-      for (int i = 1; i < scores.length; i++) {
-        if (scores[i] > bestScore) {
-          bestScore = scores[i];
-          bestIndex = i;
-        }
-      }
-
-      // Pastikan index aman
-      if (bestIndex >= _labels.length) {
-        throw Exception(
-          'Label tidak sesuai dengan output model.',
-        );
-      }
-
-      final label = _labels[bestIndex];
 
       if (!mounted) return;
 
       setState(() {
-        _prediction = _formatLabel(label);
-        _confidence = bestScore;
+        _prediction = result.category;
+        _objectName = result.objectName;
+        _processingMethod = result.processingMethod;
         _isProcessing = false;
       });
       try {
         await PilaraApi.instance.recordClassification(
-          wasteType: _formatLabel(label),
-          confidence: bestScore,
+          wasteType: result.category,
         );
       } on ApiException catch (error) {
         if (!mounted) return;
@@ -328,7 +160,7 @@ class _CameraScreenState extends State<CameraScreen> {
           ),
         );
       }
-    } catch (e) {
+    } on Exception catch (error) {
       if (!mounted) return;
 
       setState(() {
@@ -337,35 +169,30 @@ class _CameraScreenState extends State<CameraScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Gagal mengenali sampah: $e',
-          ),
+          content: Text('Gagal mengenali sampah: $error'),
         ),
       );
     }
   }
 
-  // =============================================================
-  // FORMAT LABEL
-  // =============================================================
-
-  String _formatLabel(String label) {
-    switch (label.toLowerCase()) {
-      case 'b3':
-        return 'B3';
-
-      case 'anorganik':
-        return 'Anorganik';
-
-      case 'organik':
-        return 'Organik';
-
-      case 'lainnya':
-        return 'Lainnya';
-
-      default:
-        return label;
+  Uint8List _prepareImageForGemini(Uint8List imageBytes) {
+    final decodedImage = img.decodeImage(imageBytes);
+    if (decodedImage == null) {
+      throw const FormatException('Foto tidak dapat diproses.');
     }
+
+    final longestSide = decodedImage.width > decodedImage.height
+        ? decodedImage.width
+        : decodedImage.height;
+    final resizedImage = longestSide > 1024
+        ? img.copyResize(
+            decodedImage,
+            width: (decodedImage.width * 1024 / longestSide).round(),
+            height: (decodedImage.height * 1024 / longestSide).round(),
+          )
+        : decodedImage;
+
+    return Uint8List.fromList(img.encodeJpg(resizedImage, quality: 80));
   }
 
   // =============================================================
@@ -376,7 +203,8 @@ class _CameraScreenState extends State<CameraScreen> {
     setState(() {
       _imagePath = null;
       _prediction = null;
-      _confidence = null;
+      _objectName = null;
+      _processingMethod = null;
     });
   }
 
@@ -387,7 +215,6 @@ class _CameraScreenState extends State<CameraScreen> {
   @override
   void dispose() {
     _cameraController?.dispose();
-    _interpreter?.close();
 
     super.dispose();
   }
@@ -680,11 +507,6 @@ class _CameraScreenState extends State<CameraScreen> {
   // =============================================================
 
   Widget _buildResultCard() {
-    final confidence = ((_confidence ?? 0) * 100).clamp(
-      0,
-      100,
-    );
-
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -734,9 +556,11 @@ class _CameraScreenState extends State<CameraScreen> {
                 const SizedBox(height: 3),
 
                 Text(
-                  _prediction ?? '-',
+                  _objectName ?? '-',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 22,
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF263329),
                   ),
@@ -745,13 +569,22 @@ class _CameraScreenState extends State<CameraScreen> {
                 const SizedBox(height: 3),
 
                 Text(
-                  'Keyakinan '
-                  '${confidence.toStringAsFixed(1)}%',
+                  'Kategori: ${_prediction ?? '-'}',
                   style: const TextStyle(
                     color: Color(0xFF3F7040),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+                if (_processingMethod case final method?)
+                  Text(
+                    method,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.grey.shade700,
+                      fontSize: 12,
+                    ),
+                  ),
               ],
             ),
           ),
@@ -807,7 +640,7 @@ class _CameraScreenState extends State<CameraScreen> {
                   _isInitializing = true;
                 });
 
-                _initializeCameraAndModel();
+                _initializeCamera();
               },
               child: const Text(
                 'Coba Lagi',

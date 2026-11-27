@@ -27,36 +27,33 @@ class _ArticlesScreenState extends State<ArticlesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.green[50],
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
       // ============================================================
       // APP BAR
       // ============================================================
 
       appBar: AppBar(
-        backgroundColor: Colors.green[50],
+        backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-
         leading: IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios_new_rounded,
-            color: Colors.black87,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
           onPressed: () {
             Navigator.pop(context);
           },
         ),
-
-        title: const Text(
+        title: Text(
           'Artikel Pilara',
           style: TextStyle(
-            color: Colors.black87,
+            color: Theme.of(context).colorScheme.onSurface,
             fontSize: 20,
             fontWeight: FontWeight.bold,
           ),
         ),
-
         centerTitle: false,
       ),
 
@@ -133,14 +130,11 @@ class _ArticleListCard extends StatelessWidget {
           arguments: article,
         );
       },
-
       child: Container(
         width: double.infinity,
-
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(20),
-
           boxShadow: const [
             BoxShadow(
               color: Colors.black12,
@@ -149,9 +143,7 @@ class _ArticleListCard extends StatelessWidget {
             ),
           ],
         ),
-
         clipBehavior: Clip.antiAlias,
-
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -162,11 +154,9 @@ class _ArticleListCard extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               height: 180,
-
               child: Image.network(
                 article.headerImage,
                 fit: BoxFit.cover,
-
                 errorBuilder: (
                   context,
                   error,
@@ -174,7 +164,6 @@ class _ArticleListCard extends StatelessWidget {
                 ) {
                   return Container(
                     color: Colors.green.shade50,
-
                     child: Icon(
                       article.icon,
                       size: 55,
@@ -191,11 +180,8 @@ class _ArticleListCard extends StatelessWidget {
 
             Padding(
               padding: const EdgeInsets.all(16),
-
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
-
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // ------------------------------------------------
                   // CATEGORY
@@ -206,13 +192,10 @@ class _ArticleListCard extends StatelessWidget {
                       horizontal: 10,
                       vertical: 5,
                     ),
-
                     decoration: BoxDecoration(
                       color: Colors.green.shade50,
-                      borderRadius:
-                          BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(20),
                     ),
-
                     child: Text(
                       article.category,
                       style: TextStyle(
@@ -233,7 +216,6 @@ class _ArticleListCard extends StatelessWidget {
                     article.title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -251,9 +233,8 @@ class _ArticleListCard extends StatelessWidget {
                     article.description,
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
-
-                    style: const TextStyle(
-                      color: Colors.grey,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontSize: 13,
                       height: 1.4,
                     ),
@@ -270,33 +251,29 @@ class _ArticleListCard extends StatelessWidget {
                       Icon(
                         Icons.calendar_today_outlined,
                         size: 14,
-                        color: Colors.grey.shade600,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
-
                       const SizedBox(width: 5),
-
                       Expanded(
                         child: Text(
                           article.updatedDate,
                           style: TextStyle(
-                            color: Colors.grey.shade600,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
                             fontSize: 12,
                           ),
                         ),
                       ),
-
                       Icon(
                         Icons.access_time_rounded,
                         size: 15,
-                        color: Colors.grey.shade600,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
-
                       const SizedBox(width: 5),
-
                       Text(
                         article.readTime,
                         style: TextStyle(
-                          color: Colors.grey.shade600,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                           fontSize: 12,
                         ),
                       ),
@@ -310,9 +287,7 @@ class _ArticleListCard extends StatelessWidget {
                   // ------------------------------------------------
 
                   Row(
-                    mainAxisAlignment:
-                        MainAxisAlignment.end,
-
+                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       Text(
                         'Baca selengkapnya',
@@ -322,9 +297,7 @@ class _ArticleListCard extends StatelessWidget {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-
                       const SizedBox(width: 5),
-
                       Icon(
                         Icons.arrow_forward_rounded,
                         color: Colors.green.shade700,

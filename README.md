@@ -9,7 +9,7 @@ Pilara adalah aplikasi berbasis Flutter yang membantu masyarakat dalam memilah s
 - [Teknologi](#teknologi)
 - [Kategori Sampah](#kategori-sampah)
 - [Machine Learning](#machine-learning)
-- [Tampilan Aplikasi](#tampilan-aplikasi)
+- [Tampilan Aplikasi](#tampilan-aplikasi)"
 - [Struktur Folder](#struktur-folder)
 - [Instalasi](#instalasi)
 - [Status Pengembangan](#status-pengembangan)
@@ -32,7 +32,7 @@ Aplikasi Pilara memiliki beberapa fitur utama, yaitu:
 
 - Home
 - Pilah Sampah
-- Kamera
+- Kamera (identifikasi foto dengan Gemini)
 - Riwayat
 - Profile
 - Artikel
@@ -42,7 +42,7 @@ Penjelasan singkat:
 
 - Home: menampilkan ringkasan fitur dan navigasi utama aplikasi.
 - Pilah Sampah: fitur utama untuk mengelompokkan sampah berdasarkan kategori.
-- Kamera: memungkinkan pengguna mengunggah atau mengambil foto sampah untuk klasifikasi.
+- Kamera: mengambil foto sampah untuk klasifikasi menggunakan Firebase AI Logic.
 - Riwayat: menampilkan aktivitas atau data sampah yang sebelumnya diproses.
 - Profile: menampung data pengguna dan pengaturan akun.
 - Artikel: menyediakan edukasi terkait sampah, lingkungan, dan pengelolaan limbah.
@@ -54,16 +54,21 @@ Project ini dibangun menggunakan teknologi berikut:
 
 - Flutter
 - Dart
-- TensorFlow Lite
 - Camera
+- Firebase AI Logic (`firebase_ai`)
 - Geolocator
 - Flutter Map
 - Maps Launcher
 - URL Launcher
-- Model ML berbasis file TFLite (`assets/models/model.tflite`)
-- Firebase AI Logic (`firebase_ai`), Firebase App Check, dan `image_picker`
+- Firebase App Check dan `image_picker`
 
-Teknologi yang benar-benar digunakan dalam proyek ini sesuai dependensi utama yang terpasang adalah Flutter, Dart, TensorFlow Lite, camera, Firebase AI Logic, Firebase App Check, image_picker, geolocator, flutter_map, maps_launcher, dan url_launcher.
+Kamera dan identifikasi foto di Pilala memakai layanan Gemini yang sama.
+File model TFLite lama masih tersimpan sebagai aset, tetapi tidak digunakan oleh
+alur klasifikasi saat ini.
+
+Profil mendukung perubahan nama dan bio melalui backend, sedangkan email tetap
+menjadi informasi login. Preferensi tampilan terang/gelap disimpan pada
+perangkat dan diterapkan ke tema aplikasi.
 
 ## Kategori Sampah
 
@@ -76,33 +81,17 @@ Aplikasi Pilara mengelompokkan sampah ke dalam beberapa kategori utama, yaitu:
 
 Kategori ini digunakan untuk membantu proses klasifikasi dan edukasi mengenai jenis sampah yang berbeda serta cara penanganannya.
 
-## Machine Learning
+## Identifikasi Sampah
 
-Pilara menggunakan pendekatan Machine Learning berbasis model TensorFlow Lite untuk mengklasifikasikan sampah.
+Kamera utama dan unggah foto di chat Pilala memakai Firebase AI Logic dengan
+model `gemini-2.5-flash`. Foto kamera disiapkan maksimal 1024x1024 piksel dan
+dikompresi sebelum dikirim. Hasil berisi nama benda, kategori, dan cara
+pengolahan; hasil kamera disimpan ke riwayat tanpa skor confidence yang tidak
+disediakan oleh model.
 
-### Dataset
-
-- Dataset dikategorikan sesuai kelas sampah yang sesuai dengan kebutuhan aplikasi.
-- Label kelas disimpan pada file `assets/models/labels.txt`.
-- Model utama disimpan pada `assets/models/model.tflite`.
-
-### Proses Training
-
-- Proses pelatihan model dilakukan pada data sampah dengan label yang sudah diklasifikasikan.
-- Data diproses melalui tahap preprocessing agar format gambar dan fitur konsisten sebelum masuk ke model.
-- Model kemudian dikonversi ke format TensorFlow Lite agar dapat digunakan pada aplikasi mobile.
-
-### Arsitektur Model
-
-- Model yang digunakan bersifat klasifikasi citra sampah.
-- Pada tahap implementasi, model berbasis jaringan konvolusional (CNN) atau pendekatan image classifier yang sesuai dengan kebutuhan klasifikasi sampah.
-- Output model akan menghasilkan label kelas sampah yang sesuai dengan kategori yang telah ditentukan.
-
-### Evaluasi
-
-- Evaluasi model perlu dilakukan dengan menghitung akurasi, loss, serta performa klasifikasi pada data uji.
-- Keberhasilan model diukur berdasarkan sejauh mana model mampu membedakan sampah sesuai kategori dengan hasil yang stabil dan konsisten.
-- Hasil evaluasi juga menjadi dasar untuk peningkatan kualitas model di pengembangan berikutnya.
+Model TFLite dan label lama masih ada di `assets/models/`, tetapi tidak aktif
+dalam alur klasifikasi ini. Mengaktifkannya kembali memerlukan dataset serta
+pemetaan kelas yang sesuai dengan model.
 
 ## Tampilan Aplikasi
 
@@ -170,6 +159,24 @@ flutter pub get
 ```bash
 flutter run
 ```
+
+### Login Google
+
+Login Google adalah opsi terpisah pada Android; pengguna dapat memilihnya tanpa
+pernah mendaftar atau masuk dengan email/password. Pada login Google pertama,
+backend membuat akun Pilara otomatis dari identitas Google terverifikasi. Jika
+email Google cocok dengan akun Pilara yang sudah ada, akun tersebut digunakan
+kembali tanpa meminta password. Aktifkan provider Google pada Firebase Console di
+**Authentication → Sign-in method**, lalu daftarkan SHA-1 dari signing key
+debug dan release yang benar pada pengaturan aplikasi Android Firebase.
+Konfigurasi lokal `google-services.json` harus cocok dengan package
+`com.example.pilara`.
+
+Aplikasi menukar kredensial Google menjadi Firebase ID token, lalu mengirimnya
+ke endpoint backend `/api/auth/google`. Backend memverifikasi token menggunakan
+Firebase Admin dan menerbitkan token Pilara untuk pemanggilan REST API. Simpan
+kredensial Firebase Admin hanya di server; jangan masukkan file service account
+ke aplikasi.
 
 ### Integrasi Firebase AI Pilala
 

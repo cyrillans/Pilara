@@ -61,16 +61,15 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   }
 
   IconData _iconForWasteType(String wasteType) => switch (wasteType) {
-    'Organik' => Icons.eco_rounded,
-    'B3' => Icons.warning_amber_rounded,
-    'Anorganik' => Icons.recycling_rounded,
-    _ => Icons.delete_sweep_rounded,
-  };
+        'Organik' => Icons.eco_rounded,
+        'B3' => Icons.warning_amber_rounded,
+        'Anorganik' => Icons.recycling_rounded,
+        _ => Icons.delete_sweep_rounded,
+      };
 
   List<Activity> get _filteredActivities {
     List<Activity> result = _activities.where((activity) {
-      final sameMonth =
-          activity.date.year == _selectedMonth.year &&
+      final sameMonth = activity.date.year == _selectedMonth.year &&
           activity.date.month == _selectedMonth.month;
 
       if (!sameMonth) return false;
@@ -196,7 +195,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F9F7),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
@@ -250,7 +249,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                   style: TextStyle(
                     fontSize: 25,
                     fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade900,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 5),
@@ -258,7 +257,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                   'Pantau perjalananmu dalam memilah sampah',
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.grey.shade600,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -266,7 +265,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
           ),
           Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(14),
               boxShadow: [
                 BoxShadow(
@@ -442,7 +441,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
         vertical: 14,
       ),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
@@ -472,7 +471,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
             label,
             style: TextStyle(
               fontSize: 11,
-              color: Colors.grey.shade600,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -499,7 +498,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
       margin: const EdgeInsets.fromLTRB(20, 18, 20, 0),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
@@ -514,7 +513,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Kalender Aktivitas',
                   style: TextStyle(
@@ -548,7 +547,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                   '$_totalActivities aktivitas bulan ini',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey.shade600,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -573,7 +572,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
-                      color: Colors.grey.shade500,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ),
@@ -589,6 +588,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
               crossAxisCount: 7,
               mainAxisSpacing: 8,
               crossAxisSpacing: 5,
+              mainAxisExtent: 52,
             ),
             itemBuilder: (context, index) {
               if (index < startingWeekday - 1) {
@@ -650,9 +650,8 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                         hasActivity ? '😊' : '•',
                         style: TextStyle(
                           fontSize: hasActivity ? 13 : 15,
-                          color: hasActivity
-                              ? Colors.green
-                              : Colors.red.shade300,
+                          color:
+                              hasActivity ? Colors.green : Colors.red.shade300,
                         ),
                       ),
                     ],
@@ -707,7 +706,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
           label,
           style: TextStyle(
             fontSize: 10,
-            color: Colors.grey.shade600,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
       ],
@@ -719,7 +718,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
       margin: const EdgeInsets.fromLTRB(20, 18, 20, 0),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(18),
       ),
       child: const Row(
@@ -742,7 +741,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
       margin: const EdgeInsets.fromLTRB(20, 20, 20, 0),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.orange.shade50,
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: Colors.orange.shade100,
@@ -765,7 +764,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
             ),
           ),
           const SizedBox(width: 13),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -781,7 +780,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                   'Poin diberikan setelah setoran terverifikasi.',
                   style: TextStyle(
                     fontSize: 11,
-                    color: Colors.black54,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -797,7 +796,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
       margin: const EdgeInsets.fromLTRB(20, 15, 20, 0),
       padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
-        color: Colors.green.shade50,
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -817,7 +816,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
-                    color: Colors.green.shade800,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -826,7 +825,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                   'Coba mulai memilah sampah organik juga!',
                   style: TextStyle(
                     fontSize: 11,
-                    color: Colors.green.shade900,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     height: 1.4,
                   ),
                 ),
@@ -870,19 +869,20 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                         _selectedFilter = filter;
                       });
                     },
-                    selectedColor: Colors.green.shade100,
-                    backgroundColor: Colors.white,
+                    selectedColor:
+                        Theme.of(context).colorScheme.secondaryContainer,
+                    backgroundColor: Theme.of(context).colorScheme.surface,
                     labelStyle: TextStyle(
                       color: selected
-                          ? Colors.green.shade800
-                          : Colors.grey.shade700,
+                          ? Theme.of(context).colorScheme.onSecondaryContainer
+                          : Theme.of(context).colorScheme.onSurface,
                       fontWeight:
                           selected ? FontWeight.bold : FontWeight.normal,
                     ),
                     side: BorderSide(
                       color: selected
-                          ? Colors.green.shade300
-                          : Colors.grey.shade200,
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.outlineVariant,
                     ),
                   ),
                 );
@@ -930,7 +930,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
         child: Container(
           padding: const EdgeInsets.all(25),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(20),
           ),
           child: Center(
@@ -939,13 +939,13 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                 Icon(
                   Icons.inbox_outlined,
                   size: 45,
-                  color: Colors.grey.shade400,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
                 const SizedBox(height: 10),
                 Text(
                   'Belum ada aktivitas',
                   style: TextStyle(
-                    color: Colors.grey.shade600,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -973,7 +973,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
@@ -1015,7 +1015,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                     activity.subtitle,
                     style: TextStyle(
                       fontSize: 11,
-                      color: Colors.grey.shade600,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -1023,7 +1023,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                     '${activity.date.day} ${_monthName(activity.date.month)} • ${activity.time}',
                     style: TextStyle(
                       fontSize: 10,
-                      color: Colors.grey.shade500,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -1076,7 +1076,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
@@ -1096,7 +1096,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
+                      color: Theme.of(context).colorScheme.outlineVariant,
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
@@ -1116,7 +1116,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                       : '${activities.length} aktivitas',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey.shade600,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
                 const SizedBox(height: 15),
@@ -1130,7 +1130,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 13,
-                          color: Colors.grey.shade600,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                           height: 1.5,
                         ),
                       ),
@@ -1151,7 +1151,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(15),
       ),
       child: Row(
@@ -1177,7 +1177,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                   '${activity.time} • ${activity.subtitle}',
                   style: TextStyle(
                     fontSize: 10,
-                    color: Colors.grey.shade600,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -1198,7 +1198,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   void _showActivityDetail(Activity activity) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
           top: Radius.circular(25),
@@ -1217,7 +1217,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
+                      color: Theme.of(context).colorScheme.outlineVariant,
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
@@ -1255,7 +1255,9 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                             activity.category,
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey.shade600,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -1322,7 +1324,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
               title,
               style: TextStyle(
                 fontSize: 11,
-                color: Colors.grey.shade600,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ),
@@ -1343,7 +1345,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   void _showNotification() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
           top: Radius.circular(25),

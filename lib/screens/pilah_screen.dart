@@ -17,13 +17,11 @@ class PilahScreen extends StatefulWidget {
 
 class _PilahScreenState extends State<PilahScreen> {
   final MapController _mapController = MapController();
-  final TextEditingController _searchController =
-      TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
 
   // Default awal sebelum GPS berhasil didapatkan.
   // Akan otomatis berpindah ke lokasi HP setelah GPS aktif.
-  static const LatLng _defaultLocation =
-      LatLng(0.5071, 101.4478);
+  static const LatLng _defaultLocation = LatLng(0.5071, 101.4478);
 
   LatLng _currentLocation = _defaultLocation;
 
@@ -50,8 +48,7 @@ class _PilahScreenState extends State<PilahScreen> {
 
     _searchController.addListener(() {
       setState(() {
-        _searchQuery =
-            _searchController.text.trim().toLowerCase();
+        _searchQuery = _searchController.text.trim().toLowerCase();
       });
     });
 
@@ -96,8 +93,7 @@ class _PilahScreenState extends State<PilahScreen> {
     });
 
     try {
-      final serviceEnabled =
-          await Geolocator.isLocationServiceEnabled();
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
 
       if (!serviceEnabled) {
         if (!mounted) return;
@@ -118,12 +114,10 @@ class _PilahScreenState extends State<PilahScreen> {
         return;
       }
 
-      LocationPermission permission =
-          await Geolocator.checkPermission();
+      LocationPermission permission = await Geolocator.checkPermission();
 
       if (permission == LocationPermission.denied) {
-        permission =
-            await Geolocator.requestPermission();
+        permission = await Geolocator.requestPermission();
       }
 
       if (permission == LocationPermission.denied) {
@@ -160,8 +154,7 @@ class _PilahScreenState extends State<PilahScreen> {
         return;
       }
 
-      final position =
-          await Geolocator.getCurrentPosition(
+      final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
         ),
@@ -221,8 +214,7 @@ class _PilahScreenState extends State<PilahScreen> {
 
     if (_selectedCategory != 'Semua') {
       result = result.where((place) {
-        return place.acceptedWaste
-            .contains(_selectedCategory);
+        return place.acceptedWaste.contains(_selectedCategory);
       }).toList();
     }
 
@@ -230,8 +222,7 @@ class _PilahScreenState extends State<PilahScreen> {
       result = result.where((place) {
         final name = place.name.toLowerCase();
         final address = place.address.toLowerCase();
-        final waste =
-            place.acceptedWaste.join(' ').toLowerCase();
+        final waste = place.acceptedWaste.join(' ').toLowerCase();
 
         return name.contains(_searchQuery) ||
             address.contains(_searchQuery) ||
@@ -241,16 +232,14 @@ class _PilahScreenState extends State<PilahScreen> {
 
     if (_locationReady) {
       result.sort((a, b) {
-        final distanceA =
-            Geolocator.distanceBetween(
+        final distanceA = Geolocator.distanceBetween(
           _currentLocation.latitude,
           _currentLocation.longitude,
           a.latitude,
           a.longitude,
         );
 
-        final distanceB =
-            Geolocator.distanceBetween(
+        final distanceB = Geolocator.distanceBetween(
           _currentLocation.latitude,
           _currentLocation.longitude,
           b.latitude,
@@ -269,19 +258,18 @@ class _PilahScreenState extends State<PilahScreen> {
   // ============================================================
 
   IconData _iconFor(String name) => switch (name) {
-    'eco' => Icons.eco_rounded,
-    'warning' => Icons.warning_amber_rounded,
-    'delete' => Icons.delete_sweep_rounded,
-    _ => Icons.recycling_rounded,
-  };
+        'eco' => Icons.eco_rounded,
+        'warning' => Icons.warning_amber_rounded,
+        'delete' => Icons.delete_sweep_rounded,
+        _ => Icons.recycling_rounded,
+      };
 
   String _getDistance(WastePoint place) {
     if (!_locationReady) {
       return 'Lokasi belum tersedia';
     }
 
-    final distance =
-        Geolocator.distanceBetween(
+    final distance = Geolocator.distanceBetween(
       _currentLocation.latitude,
       _currentLocation.longitude,
       place.latitude,
@@ -302,8 +290,7 @@ class _PilahScreenState extends State<PilahScreen> {
   Future<void> _openRoute(
     WastePoint place,
   ) async {
-    final destination =
-        '${place.latitude},${place.longitude}';
+    final destination = '${place.latitude},${place.longitude}';
 
     final Uri uri;
 
@@ -350,7 +337,7 @@ class _PilahScreenState extends State<PilahScreen> {
     final places = _filteredPlaces;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F9F7),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(),
@@ -401,8 +388,7 @@ class _PilahScreenState extends State<PilahScreen> {
                       final place = places[index];
 
                       return Padding(
-                        padding:
-                            const EdgeInsets.only(
+                        padding: const EdgeInsets.only(
                           bottom: 14,
                         ),
                         child: _buildPlaceCard(place),
@@ -455,22 +441,18 @@ class _PilahScreenState extends State<PilahScreen> {
         children: [
           Expanded(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
                     Container(
-                      padding:
-                          const EdgeInsets.symmetric(
+                      padding: const EdgeInsets.symmetric(
                         horizontal: 9,
                         vertical: 5,
                       ),
                       decoration: BoxDecoration(
-                        color:
-                            const Color(0xFFE7F5EA),
-                        borderRadius:
-                            BorderRadius.circular(20),
+                        color: const Color(0xFFE7F5EA),
+                        borderRadius: BorderRadius.circular(20),
                       ),
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
@@ -485,10 +467,8 @@ class _PilahScreenState extends State<PilahScreen> {
                             'Pilah lebih baik',
                             style: TextStyle(
                               fontSize: 11,
-                              fontWeight:
-                                  FontWeight.w700,
-                              color:
-                                  Color(0xFF2E7D32),
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF2E7D32),
                             ),
                           ),
                         ],
@@ -497,12 +477,12 @@ class _PilahScreenState extends State<PilahScreen> {
                   ],
                 ),
                 const SizedBox(height: 10),
-                const Text(
+                Text(
                   'Pilah Sampah',
                   style: TextStyle(
                     fontSize: 27,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF17231A),
+                    color: Theme.of(context).colorScheme.onSurface,
                     letterSpacing: -0.5,
                   ),
                 ),
@@ -512,7 +492,7 @@ class _PilahScreenState extends State<PilahScreen> {
                   style: TextStyle(
                     fontSize: 13,
                     height: 1.4,
-                    color: Colors.grey.shade600,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -523,13 +503,11 @@ class _PilahScreenState extends State<PilahScreen> {
             width: 45,
             height: 45,
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius:
-                  BorderRadius.circular(15),
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(15),
               boxShadow: [
                 BoxShadow(
-                  color:
-                      Colors.black.withOpacity(0.05),
+                  color: Colors.black.withOpacity(0.05),
                   blurRadius: 15,
                   offset: const Offset(0, 5),
                 ),
@@ -541,8 +519,7 @@ class _PilahScreenState extends State<PilahScreen> {
                   ? const SizedBox(
                       width: 19,
                       height: 19,
-                      child:
-                          CircularProgressIndicator(
+                      child: CircularProgressIndicator(
                         strokeWidth: 2,
                       ),
                     )
@@ -570,16 +547,14 @@ class _PilahScreenState extends State<PilahScreen> {
       child: Container(
         height: 52,
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius:
-              BorderRadius.circular(17),
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(17),
           border: Border.all(
             color: const Color(0xFFE7ECE8),
           ),
           boxShadow: [
             BoxShadow(
-              color:
-                  Colors.black.withOpacity(0.035),
+              color: Colors.black.withOpacity(0.035),
               blurRadius: 14,
               offset: const Offset(0, 5),
             ),
@@ -587,18 +562,16 @@ class _PilahScreenState extends State<PilahScreen> {
         ),
         child: TextField(
           controller: _searchController,
-          textInputAction:
-              TextInputAction.search,
+          textInputAction: TextInputAction.search,
           decoration: InputDecoration(
-            hintText:
-                'Cari lokasi atau jenis sampah...',
+            hintText: 'Cari lokasi atau jenis sampah...',
             hintStyle: TextStyle(
-              color: Colors.grey.shade500,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               fontSize: 13,
             ),
-            prefixIcon: const Icon(
+            prefixIcon: Icon(
               Icons.search_rounded,
-              color: Color(0xFF5B6B5D),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
             suffixIcon: _searchQuery.isNotEmpty
                 ? IconButton(
@@ -611,8 +584,7 @@ class _PilahScreenState extends State<PilahScreen> {
                   )
                 : null,
             border: InputBorder.none,
-            contentPadding:
-                const EdgeInsets.symmetric(
+            contentPadding: const EdgeInsets.symmetric(
               vertical: 15,
             ),
           ),
@@ -632,17 +604,14 @@ class _PilahScreenState extends State<PilahScreen> {
           8,
         ),
         scrollDirection: Axis.horizontal,
-        physics:
-            const BouncingScrollPhysics(),
+        physics: const BouncingScrollPhysics(),
         itemCount: _categories.length,
         separatorBuilder: (_, __) {
           return const SizedBox(width: 8);
         },
         itemBuilder: (context, index) {
-          final category =
-              _categories[index];
-          final selected =
-              _selectedCategory == category;
+          final category = _categories[index];
+          final selected = _selectedCategory == category;
 
           return GestureDetector(
             onTap: () {
@@ -654,16 +623,14 @@ class _PilahScreenState extends State<PilahScreen> {
               duration: const Duration(
                 milliseconds: 200,
               ),
-              padding:
-                  const EdgeInsets.symmetric(
+              padding: const EdgeInsets.symmetric(
                 horizontal: 16,
               ),
               decoration: BoxDecoration(
                 color: selected
                     ? const Color(0xFF2E7D32)
-                    : Colors.white,
-                borderRadius:
-                    BorderRadius.circular(24),
+                    : Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(24),
                 border: Border.all(
                   color: selected
                       ? const Color(0xFF2E7D32)
@@ -675,11 +642,10 @@ class _PilahScreenState extends State<PilahScreen> {
                   category,
                   style: TextStyle(
                     fontSize: 12,
-                    fontWeight:
-                        FontWeight.w700,
+                    fontWeight: FontWeight.w700,
                     color: selected
                         ? Colors.white
-                        : const Color(0xFF536056),
+                        : Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ),
@@ -703,16 +669,14 @@ class _PilahScreenState extends State<PilahScreen> {
           child: Container(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: const Color(0xFF2E7D32)
-                  .withOpacity(0.16),
+              color: const Color(0xFF2E7D32).withOpacity(0.16),
             ),
             child: Center(
               child: Container(
                 width: 18,
                 height: 18,
                 decoration: BoxDecoration(
-                  color:
-                      const Color(0xFF2E7D32),
+                  color: const Color(0xFF2E7D32),
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: Colors.white,
@@ -720,9 +684,7 @@ class _PilahScreenState extends State<PilahScreen> {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color:
-                          const Color(0xFF2E7D32)
-                              .withOpacity(0.35),
+                      color: const Color(0xFF2E7D32).withOpacity(0.35),
                       blurRadius: 10,
                     ),
                   ],
@@ -749,16 +711,13 @@ class _PilahScreenState extends State<PilahScreen> {
               _showPlaceDetail(place);
             },
             child: Column(
-              mainAxisSize:
-                  MainAxisSize.min,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
                   width: 38,
                   height: 38,
-                  decoration:
-                      BoxDecoration(
-                    color:
-                        const Color(0xFF2E7D32),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2E7D32),
                     shape: BoxShape.circle,
                     border: Border.all(
                       color: Colors.white,
@@ -766,11 +725,9 @@ class _PilahScreenState extends State<PilahScreen> {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black
-                            .withOpacity(0.2),
+                        color: Colors.black.withOpacity(0.2),
                         blurRadius: 8,
-                        offset:
-                            const Offset(0, 3),
+                        offset: const Offset(0, 3),
                       ),
                     ],
                   ),
@@ -783,22 +740,18 @@ class _PilahScreenState extends State<PilahScreen> {
                 Container(
                   width: 0,
                   height: 0,
-                  decoration:
-                      const BoxDecoration(
+                  decoration: const BoxDecoration(
                     border: Border(
                       left: BorderSide(
-                        color:
-                            Colors.transparent,
+                        color: Colors.transparent,
                         width: 5,
                       ),
                       right: BorderSide(
-                        color:
-                            Colors.transparent,
+                        color: Colors.transparent,
                         width: 5,
                       ),
                       top: BorderSide(
-                        color:
-                            Color(0xFF2E7D32),
+                        color: Color(0xFF2E7D32),
                         width: 7,
                       ),
                     ),
@@ -823,12 +776,10 @@ class _PilahScreenState extends State<PilahScreen> {
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: const Color(0xFFE4E9E5),
-          borderRadius:
-              BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color:
-                  Colors.black.withOpacity(0.07),
+              color: Colors.black.withOpacity(0.07),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),
@@ -839,18 +790,15 @@ class _PilahScreenState extends State<PilahScreen> {
             FlutterMap(
               mapController: _mapController,
               options: MapOptions(
-                initialCenter:
-                    _currentLocation,
+                initialCenter: _currentLocation,
                 initialZoom: 13.5,
                 minZoom: 4,
                 maxZoom: 19,
               ),
               children: [
                 TileLayer(
-                  urlTemplate:
-                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName:
-                      'com.example.pilara',
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.example.pilara',
                 ),
                 MarkerLayer(
                   markers: markers,
@@ -870,43 +818,35 @@ class _PilahScreenState extends State<PilahScreen> {
               top: 12,
               left: 12,
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(
+                padding: const EdgeInsets.symmetric(
                   horizontal: 11,
                   vertical: 7,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white
-                      .withOpacity(0.94),
-                  borderRadius:
-                      BorderRadius.circular(20),
+                  color: Colors.white.withOpacity(0.94),
+                  borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black
-                          .withOpacity(0.08),
+                      color: Colors.black.withOpacity(0.08),
                       blurRadius: 8,
                     ),
                   ],
                 ),
                 child: const Row(
-                  mainAxisSize:
-                      MainAxisSize.min,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
                       Icons.layers_rounded,
                       size: 14,
-                      color:
-                          Color(0xFF2E7D32),
+                      color: Color(0xFF2E7D32),
                     ),
                     SizedBox(width: 5),
                     Text(
                       'Titik pengelolaan',
                       style: TextStyle(
                         fontSize: 11,
-                        fontWeight:
-                            FontWeight.w700,
-                        color:
-                            Color(0xFF344238),
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF344238),
                       ),
                     ),
                   ],
@@ -920,26 +860,21 @@ class _PilahScreenState extends State<PilahScreen> {
                 top: 12,
                 right: 12,
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(
+                  padding: const EdgeInsets.symmetric(
                     horizontal: 11,
                     vertical: 7,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white
-                        .withOpacity(0.94),
-                    borderRadius:
-                        BorderRadius.circular(20),
+                    color: Colors.white.withOpacity(0.94),
+                    borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Row(
-                    mainAxisSize:
-                        MainAxisSize.min,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       SizedBox(
                         width: 13,
                         height: 13,
-                        child:
-                            CircularProgressIndicator(
+                        child: CircularProgressIndicator(
                           strokeWidth: 2,
                         ),
                       ),
@@ -948,8 +883,7 @@ class _PilahScreenState extends State<PilahScreen> {
                         'Mencari lokasi...',
                         style: TextStyle(
                           fontSize: 10,
-                          fontWeight:
-                              FontWeight.w600,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
@@ -962,22 +896,18 @@ class _PilahScreenState extends State<PilahScreen> {
               right: 12,
               bottom: 12,
               child: Material(
-                color: Colors.white,
-                borderRadius:
-                    BorderRadius.circular(14),
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(14),
                 elevation: 3,
                 child: InkWell(
-                  borderRadius:
-                      BorderRadius.circular(14),
-                  onTap:
-                      _centerToCurrentLocation,
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: _centerToCurrentLocation,
                   child: const SizedBox(
                     width: 46,
                     height: 46,
                     child: Icon(
                       Icons.my_location_rounded,
-                      color:
-                          Color(0xFF2E7D32),
+                      color: Color(0xFF2E7D32),
                     ),
                   ),
                 ),
@@ -999,19 +929,16 @@ class _PilahScreenState extends State<PilahScreen> {
       ),
       child: Row(
         children: [
-          const Expanded(
+          Expanded(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Lokasi terdekat',
                   style: TextStyle(
                     fontSize: 19,
-                    fontWeight:
-                        FontWeight.w800,
-                    color:
-                        Color(0xFF17231A),
+                    fontWeight: FontWeight.w800,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 SizedBox(height: 3),
@@ -1019,33 +946,27 @@ class _PilahScreenState extends State<PilahScreen> {
                   'Pilih lokasi sesuai jenis sampahmu.',
                   style: TextStyle(
                     fontSize: 12,
-                    color:
-                        Color(0xFF758078),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
             ),
           ),
           Container(
-            padding:
-                const EdgeInsets.symmetric(
+            padding: const EdgeInsets.symmetric(
               horizontal: 10,
               vertical: 7,
             ),
             decoration: BoxDecoration(
-              color:
-                  const Color(0xFFEAF5EC),
-              borderRadius:
-                  BorderRadius.circular(12),
+              color: const Color(0xFFEAF5EC),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
               '$count lokasi',
               style: const TextStyle(
                 fontSize: 11,
-                fontWeight:
-                    FontWeight.w700,
-                color:
-                    Color(0xFF2E7D32),
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF2E7D32),
               ),
             ),
           ),
@@ -1062,47 +983,39 @@ class _PilahScreenState extends State<PilahScreen> {
       child: Container(
         padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius:
-              BorderRadius.circular(20),
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color:
-                const Color(0xFFE8EDE9),
+            color: const Color(0xFFE8EDE9),
           ),
           boxShadow: [
             BoxShadow(
-              color:
-                  Colors.black.withOpacity(0.035),
+              color: Colors.black.withOpacity(0.035),
               blurRadius: 14,
               offset: const Offset(0, 5),
             ),
           ],
         ),
         child: Row(
-          crossAxisAlignment:
-              CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
               width: 52,
               height: 52,
               decoration: BoxDecoration(
-                color:
-                    const Color(0xFFEAF5EC),
-                borderRadius:
-                    BorderRadius.circular(16),
+                color: const Color(0xFFEAF5EC),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Icon(
                 _iconFor(place.icon),
-                color:
-                    const Color(0xFF2E7D32),
+                color: const Color(0xFF2E7D32),
                 size: 25,
               ),
             ),
             const SizedBox(width: 13),
             Expanded(
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
@@ -1110,25 +1023,19 @@ class _PilahScreenState extends State<PilahScreen> {
                         child: Text(
                           place.name,
                           maxLines: 1,
-                          overflow:
-                              TextOverflow.ellipsis,
-                          style:
-                              const TextStyle(
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
                             fontSize: 15,
-                            fontWeight:
-                                FontWeight.w800,
-                            color:
-                                Color(0xFF1B261D),
+                            fontWeight: FontWeight.w800,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                       ),
                       const SizedBox(width: 6),
                       const Icon(
-                        Icons
-                            .chevron_right_rounded,
+                        Icons.chevron_right_rounded,
                         size: 20,
-                        color:
-                            Color(0xFF9AA39C),
+                        color: Color(0xFF9AA39C),
                       ),
                     ],
                   ),
@@ -1136,12 +1043,10 @@ class _PilahScreenState extends State<PilahScreen> {
                   Text(
                     place.address,
                     maxLines: 1,
-                    overflow:
-                        TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
                       fontSize: 11,
-                      color:
-                          Color(0xFF7B857D),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                   const SizedBox(height: 9),
@@ -1155,13 +1060,10 @@ class _PilahScreenState extends State<PilahScreen> {
                       ),
                       _smallTag(
                         Icons.star_rounded,
-                        place.rating
-                            .toStringAsFixed(1),
+                        place.rating.toStringAsFixed(1),
                       ),
-                      ...place.acceptedWaste
-                          .map(
-                        (waste) =>
-                            _wasteTag(waste),
+                      ...place.acceptedWaste.map(
+                        (waste) => _wasteTag(waste),
                       ),
                     ],
                   ),
@@ -1179,36 +1081,29 @@ class _PilahScreenState extends State<PilahScreen> {
     String text,
   ) {
     return Container(
-      padding:
-          const EdgeInsets.symmetric(
+      padding: const EdgeInsets.symmetric(
         horizontal: 7,
         vertical: 5,
       ),
       decoration: BoxDecoration(
-        color:
-            const Color(0xFFF4F6F4),
-        borderRadius:
-            BorderRadius.circular(8),
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
-        mainAxisSize:
-            MainAxisSize.min,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             icon,
             size: 12,
-            color:
-                const Color(0xFF647066),
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
           const SizedBox(width: 4),
           Text(
             text,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 9.5,
-              fontWeight:
-                  FontWeight.w700,
-              color:
-                  Color(0xFF647066),
+              fontWeight: FontWeight.w700,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -1222,50 +1117,39 @@ class _PilahScreenState extends State<PilahScreen> {
 
     switch (waste) {
       case 'Organik':
-        background =
-            const Color(0xFFE8F5E9);
-        foreground =
-            const Color(0xFF2E7D32);
+        background = const Color(0xFFE8F5E9);
+        foreground = const Color(0xFF2E7D32);
         break;
 
       case 'Anorganik':
-        background =
-            const Color(0xFFE8F0FE);
-        foreground =
-            const Color(0xFF315FA8);
+        background = const Color(0xFFE8F0FE);
+        foreground = const Color(0xFF315FA8);
         break;
 
       case 'B3':
-        background =
-            const Color(0xFFFFF2DD);
-        foreground =
-            const Color(0xFFAA6A00);
+        background = const Color(0xFFFFF2DD);
+        foreground = const Color(0xFFAA6A00);
         break;
 
       default:
-        background =
-            const Color(0xFFF0ECF8);
-        foreground =
-            const Color(0xFF7156A3);
+        background = const Color(0xFFF0ECF8);
+        foreground = const Color(0xFF7156A3);
     }
 
     return Container(
-      padding:
-          const EdgeInsets.symmetric(
+      padding: const EdgeInsets.symmetric(
         horizontal: 8,
         vertical: 5,
       ),
       decoration: BoxDecoration(
         color: background,
-        borderRadius:
-            BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         waste,
         style: TextStyle(
           fontSize: 9.5,
-          fontWeight:
-              FontWeight.w700,
+          fontWeight: FontWeight.w700,
           color: foreground,
         ),
       ),
@@ -1283,37 +1167,32 @@ class _PilahScreenState extends State<PilahScreen> {
       child: Container(
         padding: const EdgeInsets.all(28),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius:
-              BorderRadius.circular(22),
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(22),
         ),
-        child: const Column(
+        child: Column(
           children: [
             Icon(
               Icons.search_off_rounded,
               size: 48,
-              color: Color(0xFF9BA49D),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
             SizedBox(height: 12),
             Text(
               'Lokasi tidak ditemukan',
               style: TextStyle(
                 fontSize: 16,
-                fontWeight:
-                    FontWeight.w800,
-                color:
-                    Color(0xFF263128),
+                fontWeight: FontWeight.w800,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
             SizedBox(height: 6),
             Text(
               'Coba gunakan kata kunci atau kategori lainnya.',
-              textAlign:
-                  TextAlign.center,
+              textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 12,
-                color:
-                    Color(0xFF7B857D),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
                 height: 1.4,
               ),
             ),
@@ -1331,99 +1210,79 @@ class _PilahScreenState extends State<PilahScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor:
-          Colors.transparent,
+      backgroundColor: Colors.transparent,
       builder: (context) {
         return Container(
-          padding:
-              const EdgeInsets.fromLTRB(
+          padding: const EdgeInsets.fromLTRB(
             20,
             10,
             20,
             25,
           ),
-          decoration:
-              const BoxDecoration(
-            color: Colors.white,
-            borderRadius:
-                BorderRadius.vertical(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.vertical(
               top: Radius.circular(28),
             ),
           ),
           child: SafeArea(
             top: false,
             child: Column(
-              mainAxisSize:
-                  MainAxisSize.min,
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Center(
                   child: Container(
                     width: 42,
                     height: 4,
-                    decoration:
-                        BoxDecoration(
-                      color: const Color(
-                          0xFFD7DDD8),
-                      borderRadius:
-                          BorderRadius.circular(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFD7DDD8),
+                      borderRadius: BorderRadius.circular(
                         10,
                       ),
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 20),
-
                 Row(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
                       width: 58,
                       height: 58,
-                      decoration:
-                          BoxDecoration(
-                        color: const Color(
-                            0xFFEAF5EC),
-                        borderRadius:
-                            BorderRadius.circular(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEAF5EC),
+                        borderRadius: BorderRadius.circular(
                           17,
                         ),
                       ),
                       child: Icon(
                         _iconFor(place.icon),
-                        color: const Color(
-                            0xFF2E7D32),
+                        color: const Color(0xFF2E7D32),
                         size: 29,
                       ),
                     ),
                     const SizedBox(width: 13),
                     Expanded(
                       child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             place.name,
-                            style:
-                                const TextStyle(
+                            style: TextStyle(
                               fontSize: 19,
-                              fontWeight:
-                                  FontWeight.w800,
-                              color: Color(
-                                  0xFF17231A),
+                              fontWeight: FontWeight.w800,
+                              color: Theme.of(context).colorScheme.onSurface,
                             ),
                           ),
                           const SizedBox(height: 5),
                           Text(
                             place.address,
-                            style:
-                                const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
-                              color: Color(
-                                  0xFF788279),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -1431,9 +1290,7 @@ class _PilahScreenState extends State<PilahScreen> {
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 20),
-
                 Row(
                   children: [
                     Expanded(
@@ -1448,8 +1305,7 @@ class _PilahScreenState extends State<PilahScreen> {
                       child: _detailInfo(
                         Icons.star_rounded,
                         'Rating',
-                        place.rating
-                            .toStringAsFixed(1),
+                        place.rating.toStringAsFixed(1),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -1462,82 +1318,58 @@ class _PilahScreenState extends State<PilahScreen> {
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 18),
-
-                const Text(
+                Text(
                   'Menerima sampah',
                   style: TextStyle(
                     fontSize: 14,
-                    fontWeight:
-                        FontWeight.w800,
-                    color:
-                        Color(0xFF273228),
+                    fontWeight: FontWeight.w800,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
-
                 const SizedBox(height: 9),
-
                 Wrap(
                   spacing: 7,
                   runSpacing: 7,
-                  children: place
-                      .acceptedWaste
+                  children: place.acceptedWaste
                       .map(
-                        (waste) =>
-                            _largeWasteTag(waste),
+                        (waste) => _largeWasteTag(waste),
                       )
                       .toList(),
                 ),
-
                 const SizedBox(height: 18),
-
-                const Text(
+                Text(
                   'Tentang lokasi',
                   style: TextStyle(
                     fontSize: 14,
-                    fontWeight:
-                        FontWeight.w800,
-                    color:
-                        Color(0xFF273228),
+                    fontWeight: FontWeight.w800,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
-
                 const SizedBox(height: 7),
-
                 Text(
                   place.description,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     height: 1.5,
-                    color:
-                        Color(0xFF737D75),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
-
                 const SizedBox(height: 22),
-
                 SizedBox(
                   width: double.infinity,
                   height: 53,
-                  child:
-                      ElevatedButton.icon(
+                  child: ElevatedButton.icon(
                     onPressed: () {
                       Navigator.pop(context);
                       _openRoute(place);
                     },
-                    style:
-                        ElevatedButton.styleFrom(
-                      backgroundColor:
-                          const Color(
-                              0xFF2E7D32),
-                      foregroundColor:
-                          Colors.white,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2E7D32),
+                      foregroundColor: Colors.white,
                       elevation: 0,
-                      shape:
-                          RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(
                           16,
                         ),
                       ),
@@ -1550,20 +1382,16 @@ class _PilahScreenState extends State<PilahScreen> {
                       'Buka Rute',
                       style: TextStyle(
                         fontSize: 14,
-                        fontWeight:
-                            FontWeight.w800,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 9),
-
                 SizedBox(
                   width: double.infinity,
                   height: 48,
-                  child:
-                      OutlinedButton(
+                  child: OutlinedButton(
                     onPressed: () {
                       Navigator.pop(context);
 
@@ -1575,20 +1403,13 @@ class _PilahScreenState extends State<PilahScreen> {
                         16,
                       );
                     },
-                    style:
-                        OutlinedButton.styleFrom(
-                      foregroundColor:
-                          const Color(
-                              0xFF2E7D32),
-                      side:
-                          const BorderSide(
-                        color: Color(
-                            0xFFB9D2BC),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF2E7D32),
+                      side: const BorderSide(
+                        color: Color(0xFFB9D2BC),
                       ),
-                      shape:
-                          RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(
                           16,
                         ),
                       ),
@@ -1597,8 +1418,7 @@ class _PilahScreenState extends State<PilahScreen> {
                       'Lihat di Peta',
                       style: TextStyle(
                         fontSize: 13,
-                        fontWeight:
-                            FontWeight.w700,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
@@ -1617,48 +1437,39 @@ class _PilahScreenState extends State<PilahScreen> {
     String value,
   ) {
     return Container(
-      padding:
-          const EdgeInsets.symmetric(
+      padding: const EdgeInsets.symmetric(
         horizontal: 9,
         vertical: 11,
       ),
       decoration: BoxDecoration(
-        color:
-            const Color(0xFFF5F7F5),
-        borderRadius:
-            BorderRadius.circular(13),
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(13),
       ),
       child: Column(
         children: [
           Icon(
             icon,
             size: 18,
-            color:
-                const Color(0xFF2E7D32),
+            color: const Color(0xFF2E7D32),
           ),
           const SizedBox(height: 5),
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 9,
-              color:
-                  Color(0xFF89928B),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: 2),
           Text(
             value,
             maxLines: 1,
-            overflow:
-                TextOverflow.ellipsis,
-            textAlign:
-                TextAlign.center,
-            style: const TextStyle(
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
               fontSize: 10,
-              fontWeight:
-                  FontWeight.w800,
-              color:
-                  Color(0xFF354037),
+              fontWeight: FontWeight.w800,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
         ],
@@ -1674,50 +1485,39 @@ class _PilahScreenState extends State<PilahScreen> {
 
     switch (waste) {
       case 'Organik':
-        background =
-            const Color(0xFFE8F5E9);
-        foreground =
-            const Color(0xFF2E7D32);
+        background = const Color(0xFFE8F5E9);
+        foreground = const Color(0xFF2E7D32);
         break;
 
       case 'Anorganik':
-        background =
-            const Color(0xFFE8F0FE);
-        foreground =
-            const Color(0xFF315FA8);
+        background = const Color(0xFFE8F0FE);
+        foreground = const Color(0xFF315FA8);
         break;
 
       case 'B3':
-        background =
-            const Color(0xFFFFF2DD);
-        foreground =
-            const Color(0xFFAA6A00);
+        background = const Color(0xFFFFF2DD);
+        foreground = const Color(0xFFAA6A00);
         break;
 
       default:
-        background =
-            const Color(0xFFF0ECF8);
-        foreground =
-            const Color(0xFF7156A3);
+        background = const Color(0xFFF0ECF8);
+        foreground = const Color(0xFF7156A3);
     }
 
     return Container(
-      padding:
-          const EdgeInsets.symmetric(
+      padding: const EdgeInsets.symmetric(
         horizontal: 12,
         vertical: 7,
       ),
       decoration: BoxDecoration(
         color: background,
-        borderRadius:
-            BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Text(
         waste,
         style: TextStyle(
           fontSize: 11,
-          fontWeight:
-              FontWeight.w700,
+          fontWeight: FontWeight.w700,
           color: foreground,
         ),
       ),
@@ -1735,26 +1535,20 @@ class _PilahScreenState extends State<PilahScreen> {
   }) {
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context)
-        .hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
-    ScaffoldMessenger.of(context)
-        .showSnackBar(
+    ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           message,
           style: const TextStyle(
             fontSize: 12,
-            fontWeight:
-                FontWeight.w600,
+            fontWeight: FontWeight.w600,
           ),
         ),
-        behavior:
-            SnackBarBehavior.floating,
-        shape:
-            RoundedRectangleBorder(
-          borderRadius:
-              BorderRadius.circular(12),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
         action: actionLabel != null
             ? SnackBarAction(

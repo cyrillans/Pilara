@@ -29,36 +29,33 @@ class ArticleDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
       // ============================================================
       // APP BAR
       // ============================================================
 
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-
         leading: IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios_new_rounded,
-            color: Colors.black87,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
           onPressed: () {
             Navigator.pop(context);
           },
         ),
-
-        title: const Text(
+        title: Text(
           'Detail Artikel',
           style: TextStyle(
-            color: Colors.black87,
+            color: Theme.of(context).colorScheme.onSurface,
             fontSize: 20,
             fontWeight: FontWeight.bold,
           ),
         ),
-
         centerTitle: false,
       ),
 
@@ -77,11 +74,9 @@ class ArticleDetailScreen extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               height: 240,
-
               child: Image.network(
                 article.headerImage,
                 fit: BoxFit.cover,
-
                 errorBuilder: (
                   context,
                   error,
@@ -89,7 +84,6 @@ class ArticleDetailScreen extends StatelessWidget {
                 ) {
                   return Container(
                     color: Colors.green.shade50,
-
                     child: Center(
                       child: Icon(
                         article.icon,
@@ -113,11 +107,8 @@ class ArticleDetailScreen extends StatelessWidget {
                 20,
                 35,
               ),
-
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
-
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // ==================================================
                   // CATEGORY
@@ -128,13 +119,10 @@ class ArticleDetailScreen extends StatelessWidget {
                       horizontal: 11,
                       vertical: 6,
                     ),
-
                     decoration: BoxDecoration(
                       color: Colors.green.shade50,
-                      borderRadius:
-                          BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(20),
                     ),
-
                     child: Text(
                       article.category,
                       style: TextStyle(
@@ -153,7 +141,6 @@ class ArticleDetailScreen extends StatelessWidget {
 
                   Text(
                     article.title,
-
                     style: const TextStyle(
                       fontSize: 26,
                       fontWeight: FontWeight.bold,
@@ -171,18 +158,16 @@ class ArticleDetailScreen extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(
                       vertical: 13,
                     ),
-
                     decoration: BoxDecoration(
                       border: Border(
                         top: BorderSide(
-                          color: Colors.grey.shade200,
+                          color: Theme.of(context).colorScheme.outlineVariant,
                         ),
                         bottom: BorderSide(
-                          color: Colors.grey.shade200,
+                          color: Theme.of(context).colorScheme.outlineVariant,
                         ),
                       ),
                     ),
-
                     child: Row(
                       children: [
                         // ------------------------------------------------
@@ -195,21 +180,20 @@ class ArticleDetailScreen extends StatelessWidget {
                               Icon(
                                 Icons.person_outline_rounded,
                                 size: 18,
-                                color:
-                                    Colors.grey.shade600,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
                               ),
-
                               const SizedBox(width: 6),
-
                               Expanded(
                                 child: Text(
                                   article.author,
                                   maxLines: 1,
-                                  overflow:
-                                      TextOverflow.ellipsis,
+                                  overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
-                                    color:
-                                        Colors.grey.shade700,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
                                     fontSize: 12,
                                   ),
                                 ),
@@ -227,17 +211,17 @@ class ArticleDetailScreen extends StatelessWidget {
                             Icon(
                               Icons.calendar_today_outlined,
                               size: 15,
-                              color:
-                                  Colors.grey.shade600,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
                             ),
-
                             const SizedBox(width: 5),
-
                             Text(
                               article.updatedDate,
                               style: TextStyle(
-                                color:
-                                    Colors.grey.shade700,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
                                 fontSize: 12,
                               ),
                             ),
@@ -260,9 +244,7 @@ class ArticleDetailScreen extends StatelessWidget {
                         size: 16,
                         color: Colors.green.shade700,
                       ),
-
                       const SizedBox(width: 6),
-
                       Text(
                         'Waktu baca: ${article.readTime}',
                         style: TextStyle(
@@ -282,11 +264,10 @@ class ArticleDetailScreen extends StatelessWidget {
 
                   Text(
                     article.introduction,
-
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       height: 1.7,
-                      color: Colors.black87,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
 
@@ -310,7 +291,6 @@ class ArticleDetailScreen extends StatelessWidget {
 
                   if (article.importantPoints.isNotEmpty) ...[
                     const SizedBox(height: 15),
-
                     const Text(
                       'Poin Penting',
                       style: TextStyle(
@@ -318,63 +298,42 @@ class ArticleDetailScreen extends StatelessWidget {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-
                     const SizedBox(height: 12),
-
                     Container(
                       width: double.infinity,
-
                       padding: const EdgeInsets.all(16),
-
                       decoration: BoxDecoration(
                         color: Colors.green.shade50,
-                        borderRadius:
-                            BorderRadius.circular(18),
+                        borderRadius: BorderRadius.circular(18),
                       ),
-
                       child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
-
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           ...article.importantPoints.map(
                             (point) {
                               return Padding(
-                                padding:
-                                    const EdgeInsets.only(
+                                padding: const EdgeInsets.only(
                                   bottom: 12,
                                 ),
-
                                 child: Row(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Container(
-                                      margin:
-                                          const EdgeInsets.only(
+                                      margin: const EdgeInsets.only(
                                         top: 5,
                                       ),
-
                                       width: 7,
                                       height: 7,
-
-                                      decoration:
-                                          BoxDecoration(
-                                        color: Colors
-                                            .green.shade700,
-                                        shape:
-                                            BoxShape.circle,
+                                      decoration: BoxDecoration(
+                                        color: Colors.green.shade700,
+                                        shape: BoxShape.circle,
                                       ),
                                     ),
-
                                     const SizedBox(width: 10),
-
                                     Expanded(
                                       child: Text(
                                         point,
-                                        style:
-                                            const TextStyle(
+                                        style: const TextStyle(
                                           fontSize: 14,
                                           height: 1.5,
                                         ),
@@ -408,71 +367,52 @@ class ArticleDetailScreen extends StatelessWidget {
 
                   Container(
                     width: double.infinity,
-
                     padding: const EdgeInsets.all(16),
-
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
-                      borderRadius:
-                          BorderRadius.circular(18),
+                      color: Theme.of(context).colorScheme.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(18),
                       border: Border.all(
-                        color: Colors.grey.shade200,
+                        color: Theme.of(context).colorScheme.outlineVariant,
                       ),
                     ),
-
                     child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
-
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
-
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Container(
                               width: 40,
                               height: 40,
-
                               decoration: BoxDecoration(
-                                color:
-                                    Colors.green.shade50,
-                                borderRadius:
-                                    BorderRadius.circular(10),
+                                color: Colors.green.shade50,
+                                borderRadius: BorderRadius.circular(10),
                               ),
-
                               child: Icon(
                                 Icons.language_rounded,
-                                color:
-                                    Colors.green.shade700,
+                                color: Colors.green.shade700,
                               ),
                             ),
-
                             const SizedBox(width: 12),
-
                             Expanded(
                               child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
+                                  Text(
                                     'Sumber artikel',
                                     style: TextStyle(
-                                      color: Colors.grey,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
                                       fontSize: 12,
                                     ),
                                   ),
-
                                   const SizedBox(height: 3),
-
                                   Text(
                                     article.sourceName,
-                                    style:
-                                        const TextStyle(
+                                    style: const TextStyle(
                                       fontSize: 14,
-                                      fontWeight:
-                                          FontWeight.w600,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 ],
@@ -489,37 +429,24 @@ class ArticleDetailScreen extends StatelessWidget {
 
                         SizedBox(
                           width: double.infinity,
-
                           child: OutlinedButton.icon(
                             onPressed: _openSource,
-
                             icon: const Icon(
                               Icons.open_in_new_rounded,
                               size: 17,
                             ),
-
                             label: const Text(
                               'Buka sumber artikel',
                             ),
-
-                            style:
-                                OutlinedButton.styleFrom(
-                              foregroundColor:
-                                  Colors.green.shade700,
-
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.green.shade700,
                               side: BorderSide(
-                                color:
-                                    Colors.green.shade300,
+                                color: Colors.green.shade300,
                               ),
-
-                              shape:
-                                  RoundedRectangleBorder(
-                                borderRadius:
-                                    BorderRadius.circular(12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
                               ),
-
-                              padding:
-                                  const EdgeInsets.symmetric(
+                              padding: const EdgeInsets.symmetric(
                                 vertical: 12,
                               ),
                             ),
@@ -566,11 +493,8 @@ class _ArticleSectionWidget extends StatelessWidget {
       padding: const EdgeInsets.only(
         bottom: 25,
       ),
-
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
-
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ========================================================
           // SECTION TITLE
@@ -578,7 +502,6 @@ class _ArticleSectionWidget extends StatelessWidget {
 
           Text(
             section.title,
-
             style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -594,11 +517,10 @@ class _ArticleSectionWidget extends StatelessWidget {
 
           Text(
             section.content,
-
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15,
               height: 1.7,
-              color: Colors.black87,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
         ],

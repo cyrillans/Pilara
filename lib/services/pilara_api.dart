@@ -32,6 +32,20 @@ class PilaraApi {
     }
   }
 
+  Future<AppUser> updateProfile({
+    required String name,
+    required String bio,
+  }) async {
+    final token = await _requiredToken();
+    final response = await _send(
+      'PATCH',
+      '/api/auth/me',
+      token: token,
+      body: {'name': name, 'bio': bio},
+    );
+    return AppUser.fromJson(response['user'] as Map<String, dynamic>);
+  }
+
   Future<AppUser> login({
     required String email,
     required String password,
@@ -40,6 +54,15 @@ class PilaraApi {
       'POST',
       '/api/auth/login',
       body: {'email': email, 'password': password},
+    );
+    return _saveSession(response);
+  }
+
+  Future<AppUser> loginWithGoogle({required String firebaseIdToken}) async {
+    final response = await _send(
+      'POST',
+      '/api/auth/google',
+      body: {'idToken': firebaseIdToken},
     );
     return _saveSession(response);
   }
@@ -94,8 +117,7 @@ class PilaraApi {
     final activities = (response['activities'] as List<dynamic>)
         .map((item) => ActivityRecord.fromJson(item as Map<String, dynamic>))
         .toList();
-    final summary =
-        response['summary'] as Map<String, dynamic>? ?? const {};
+    final summary = response['summary'] as Map<String, dynamic>? ?? const {};
     return ActivitySummary(
       activities: activities,
       totalPoints: summary['totalPoints'] as int? ?? 0,
@@ -107,14 +129,17 @@ class PilaraApi {
 
   Future<ActivityRecord> recordClassification({
     required String wasteType,
-    required double confidence,
+    double? confidence,
   }) async {
     final token = await _requiredToken();
     final response = await _send(
       'POST',
       '/api/me/activities',
       token: token,
-      body: {'wasteType': wasteType, 'confidence': confidence},
+      body: {
+        'wasteType': wasteType,
+        if (confidence != null) 'confidence': confidence,
+      },
     );
     return ActivityRecord.fromJson(
       response['activity'] as Map<String, dynamic>,
@@ -155,10 +180,15 @@ class PilaraApi {
       final response = switch (method) {
         'GET' => await _client.get(uri, headers: headers),
         'POST' => await _client.post(
-          uri,
-          headers: headers,
-          body: jsonEncode(body),
-        ),
+            uri,
+            headers: headers,
+            body: jsonEncode(body),
+          ),
+        'PATCH' => await _client.patch(
+            uri,
+            headers: headers,
+            body: jsonEncode(body),
+          ),
         _ => throw ArgumentError.value(method, 'method'),
       };
       final decoded = jsonDecode(response.body);
@@ -201,17 +231,20 @@ class AppUser {
     required this.id,
     required this.name,
     required this.email,
+    required this.bio,
   });
 
   final int id;
   final String name;
   final String email;
+  final String bio;
 
   factory AppUser.fromJson(Map<String, dynamic> json) => AppUser(
-    id: json['id'] as int,
-    name: json['name'] as String,
-    email: json['email'] as String,
-  );
+        id: json['id'] as int,
+        name: json['name'] as String,
+        email: json['email'] as String,
+        bio: json['bio'] as String? ?? '',
+      );
 }
 
 class ArticleSummary {
@@ -235,8 +268,7 @@ class ArticleSummary {
   final String updatedDate;
   final String headerImage;
 
-  factory ArticleSummary.fromJson(Map<String, dynamic> json) =>
-      ArticleSummary(
+  factory ArticleSummary.fromJson(Map<String, dynamic> json) => ArticleSummary(
         id: json['id'] as int,
         title: json['title'] as String,
         description: json['description'] as String,
@@ -274,17 +306,17 @@ class WastePoint {
   final String icon;
 
   factory WastePoint.fromJson(Map<String, dynamic> json) => WastePoint(
-    id: json['id'] as String,
-    name: json['name'] as String,
-    address: json['address'] as String,
-    description: json['description'] as String,
-    latitude: (json['latitude'] as num).toDouble(),
-    longitude: (json['longitude'] as num).toDouble(),
-    acceptedWaste: (json['acceptedWaste'] as List<dynamic>).cast<String>(),
-    rating: (json['rating'] as num).toDouble(),
-    openTime: json['openTime'] as String,
-    icon: json['icon'] as String,
-  );
+        id: json['id'] as String,
+        name: json['name'] as String,
+        address: json['address'] as String,
+        description: json['description'] as String,
+        latitude: (json['latitude'] as num).toDouble(),
+        longitude: (json['longitude'] as num).toDouble(),
+        acceptedWaste: (json['acceptedWaste'] as List<dynamic>).cast<String>(),
+        rating: (json['rating'] as num).toDouble(),
+        openTime: json['openTime'] as String,
+        icon: json['icon'] as String,
+      );
 }
 
 class ActivityRecord {
@@ -309,15 +341,15 @@ class ActivityRecord {
   final DateTime occurredAt;
 
   factory ActivityRecord.fromJson(Map<String, dynamic> json) => ActivityRecord(
-    id: json['id'] as int,
-    title: json['title'] as String,
-    subtitle: json['subtitle'] as String,
-    category: json['category'] as String,
-    wasteType: json['wasteType'] as String,
-    points: json['points'] as int,
-    confidence: (json['confidence'] as num?)?.toDouble(),
-    occurredAt: DateTime.parse(json['occurredAt'] as String),
-  );
+        id: json['id'] as int,
+        title: json['title'] as String,
+        subtitle: json['subtitle'] as String,
+        category: json['category'] as String,
+        wasteType: json['wasteType'] as String,
+        points: json['points'] as int,
+        confidence: (json['confidence'] as num?)?.toDouble(),
+        occurredAt: DateTime.parse(json['occurredAt'] as String),
+      );
 }
 
 class ActivitySummary {
