@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../data/dummy_riwayat.dart';
+import '../services/pilara_api.dart';
 
 class RiwayatScreen extends StatefulWidget {
   const RiwayatScreen({super.key});
@@ -10,17 +10,47 @@ class RiwayatScreen extends StatefulWidget {
 }
 
 class _RiwayatScreenState extends State<RiwayatScreen> {
-  DateTime _selectedMonth = DateTime(2026, 10);
+  DateTime _selectedMonth = DateTime.now();
   DateTime? _selectedDate;
   String _selectedFilter = 'Semua';
+  List<ActivityRecord> _activities = [];
+  ActivitySummary? _summary;
+  bool _isLoading = true;
+  String? _loadError;
 
-  final List<Activity> _activities = dummyActivities;
+  @override
+  void initState() {
+    super.initState();
+    _loadMonth();
+  }
 
-  List<Activity> get _filteredActivities {
-    List<Activity> result = _activities.where((activity) {
-      final sameMonth =
-          activity.date.year == _selectedMonth.year &&
-          activity.date.month == _selectedMonth.month;
+  Future<void> _loadMonth() async {
+    setState(() {
+      _isLoading = true;
+      _loadError = null;
+    });
+    try {
+      final summary =
+          await PilaraApi.instance.activities(month: _selectedMonth);
+      if (!mounted) return;
+      setState(() {
+        _summary = summary;
+        _activities = summary.activities;
+        _isLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _loadError = error.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  List<ActivityRecord> get _filteredActivities {
+    final result = _activities.where((activity) {
+      final sameMonth = activity.occurredAt.year == _selectedMonth.year &&
+          activity.occurredAt.month == _selectedMonth.month;
 
       if (!sameMonth) return false;
 
@@ -30,23 +60,17 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     }).toList();
 
     result.sort((a, b) {
-      final dateCompare = b.date.compareTo(a.date);
-
-      if (dateCompare != 0) {
-        return dateCompare;
-      }
-
-      return b.time.compareTo(a.time);
+      return b.occurredAt.compareTo(a.occurredAt);
     });
 
     return result;
   }
 
-  List<Activity> _activitiesForDate(DateTime date) {
+  List<ActivityRecord> _activitiesForDate(DateTime date) {
     return _activities.where((activity) {
-      return activity.date.year == date.year &&
-          activity.date.month == date.month &&
-          activity.date.day == date.day;
+      return activity.occurredAt.year == date.year &&
+          activity.occurredAt.month == date.month &&
+          activity.occurredAt.day == date.day;
     }).toList();
   }
 
@@ -55,46 +79,14 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   }
 
   int get _totalPoints {
-    return _activities
-        .where(
-          (activity) =>
-              activity.date.year == _selectedMonth.year &&
-              activity.date.month == _selectedMonth.month,
-        )
-        .fold(0, (sum, activity) => sum + activity.points);
+    return _summary?.totalPoints ?? 0;
   }
 
-  int get _totalActivities {
-    return _activities
-        .where(
-          (activity) =>
-              activity.date.year == _selectedMonth.year &&
-              activity.date.month == _selectedMonth.month,
-        )
-        .length;
-  }
+  int get _totalActivities => _summary?.totalActivities ?? 0;
 
-  int get _sortedCount {
-    return _activities
-        .where(
-          (activity) =>
-              activity.date.year == _selectedMonth.year &&
-              activity.date.month == _selectedMonth.month &&
-              activity.category == 'Dipilah',
-        )
-        .length;
-  }
+  int get _sortedCount => _summary?.sortedCount ?? 0;
 
-  int get _depositedCount {
-    return _activities
-        .where(
-          (activity) =>
-              activity.date.year == _selectedMonth.year &&
-              activity.date.month == _selectedMonth.month &&
-              activity.category == 'Disetor',
-        )
-        .length;
-  }
+  int get _depositedCount => _summary?.depositedCount ?? 0;
 
   void _changeMonth(int offset) {
     setState(() {
@@ -104,6 +96,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
       );
       _selectedDate = null;
     });
+    _loadMonth();
   }
 
   String _monthName(int month) {
@@ -157,15 +150,6 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
             ),
             SliverToBoxAdapter(
               child: _buildCalendarSection(),
-            ),
-            SliverToBoxAdapter(
-              child: _buildAchievements(),
-            ),
-            SliverToBoxAdapter(
-              child: _buildChallenge(),
-            ),
-            SliverToBoxAdapter(
-              child: _buildRecommendation(),
             ),
             SliverToBoxAdapter(
               child: _buildFilter(),
@@ -325,7 +309,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Text(
-                  'Eco Hero',
+                  'Level belum tersedia',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 12,
@@ -596,9 +580,8 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                         hasActivity ? '😊' : '•',
                         style: TextStyle(
                           fontSize: hasActivity ? 13 : 15,
-                          color: hasActivity
-                              ? Colors.green
-                              : Colors.red.shade300,
+                          color:
+                              hasActivity ? Colors.green : Colors.red.shade300,
                         ),
                       ),
                     ],
@@ -660,197 +643,6 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     );
   }
 
-  Widget _buildAchievements() {
-    final badges = dummyBadges;
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(20, 18, 20, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Pencapaian',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 125,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: badges.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 10),
-              itemBuilder: (context, index) {
-                final badge = badges[index];
-
-                return Container(
-                  width: 130,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(18),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        badge.icon,
-                        style: const TextStyle(fontSize: 27),
-                      ),
-                      const Spacer(),
-                      Text(
-                        badge.title,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        badge.subtitle,
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildChallenge() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.orange.shade50,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.orange.shade100,
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: Colors.orange.shade100,
-              shape: BoxShape.circle,
-            ),
-            child: const Center(
-              child: Text(
-                '🔥',
-                style: TextStyle(fontSize: 24),
-              ),
-            ),
-          ),
-          const SizedBox(width: 13),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Weekly Challenge',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Pilah sampah 5 hari berturut-turut',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.black54,
-                  ),
-                ),
-                SizedBox(height: 9),
-                LinearProgressIndicator(
-                  value: 0.6,
-                  minHeight: 6,
-                  borderRadius: BorderRadius.all(
-                    Radius.circular(10),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          const Text(
-            '3/5',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: Colors.orange,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRecommendation() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(20, 15, 20, 0),
-      padding: const EdgeInsets.all(17),
-      decoration: BoxDecoration(
-        color: Colors.green.shade50,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.lightbulb_outline_rounded,
-            color: Colors.green.shade700,
-            size: 30,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Tips untukmu',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green.shade800,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Kamu cukup aktif memilah sampah anorganik. '
-                  'Coba mulai memilah sampah organik juga!',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.green.shade900,
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildFilter() {
     final filters = ['Semua', 'Dipilah', 'Disetor'];
 
@@ -908,6 +700,23 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   }
 
   Widget _buildActivitySection() {
+    if (_isLoading) {
+      return const Padding(
+        padding: EdgeInsets.all(24),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (_loadError != null) {
+      return Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            Text('Gagal memuat aktivitas: $_loadError'),
+            TextButton(onPressed: _loadMonth, child: const Text('Coba lagi')),
+          ],
+        ),
+      );
+    }
     final activities = _filteredActivities;
 
     if (activities.isEmpty) {
@@ -950,7 +759,23 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     );
   }
 
-  Widget _activityTile(Activity activity) {
+  IconData _activityIcon(ActivityRecord activity) {
+    if (activity.category == 'Disetor') return Icons.recycling_rounded;
+    return switch (activity.wasteType.toLowerCase()) {
+      'organik' => Icons.eco_rounded,
+      'b3' => Icons.warning_amber_rounded,
+      'anorganik' => Icons.recycling_rounded,
+      _ => Icons.delete_outline_rounded,
+    };
+  }
+
+  String _activityTime(ActivityRecord activity) {
+    final date = activity.occurredAt;
+    return '${date.hour.toString().padLeft(2, '0')}:'
+        '${date.minute.toString().padLeft(2, '0')}';
+  }
+
+  Widget _activityTile(ActivityRecord activity) {
     return GestureDetector(
       onTap: () {
         _showActivityDetail(activity);
@@ -979,7 +804,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(
-                activity.icon,
+                _activityIcon(activity),
                 color: Colors.green.shade700,
                 size: 24,
               ),
@@ -1006,7 +831,9 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${activity.date.day} ${_monthName(activity.date.month)} • ${activity.time}',
+                    '${activity.occurredAt.day} '
+                    '${_monthName(activity.occurredAt.month)} • '
+                    '${_activityTime(activity)}',
                     style: TextStyle(
                       fontSize: 10,
                       color: Colors.grey.shade500,
@@ -1019,7 +846,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  '+${activity.points}',
+                  activity.points == 0 ? '0 poin' : '+${activity.points}',
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -1132,7 +959,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     );
   }
 
-  Widget _detailActivityTile(Activity activity) {
+  Widget _detailActivityTile(ActivityRecord activity) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(13),
@@ -1143,7 +970,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
       child: Row(
         children: [
           Icon(
-            activity.icon,
+            _activityIcon(activity),
             color: Colors.green,
           ),
           const SizedBox(width: 12),
@@ -1160,7 +987,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  '${activity.time} • ${activity.subtitle}',
+                  '${_activityTime(activity)} • ${activity.subtitle}',
                   style: TextStyle(
                     fontSize: 10,
                     color: Colors.grey.shade600,
@@ -1170,7 +997,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
             ),
           ),
           Text(
-            '+${activity.points}',
+            activity.points == 0 ? '0 poin' : '+${activity.points}',
             style: const TextStyle(
               color: Colors.orange,
               fontWeight: FontWeight.bold,
@@ -1181,7 +1008,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     );
   }
 
-  void _showActivityDetail(Activity activity) {
+  void _showActivityDetail(ActivityRecord activity) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -1219,7 +1046,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                         borderRadius: BorderRadius.circular(15),
                       ),
                       child: Icon(
-                        activity.icon,
+                        _activityIcon(activity),
                         color: Colors.green.shade700,
                         size: 28,
                       ),
@@ -1261,12 +1088,14 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                 _detailRow(
                   Icons.calendar_today_outlined,
                   'Tanggal',
-                  '${activity.date.day} ${_monthName(activity.date.month)} ${activity.date.year}',
+                  '${activity.occurredAt.day} '
+                      '${_monthName(activity.occurredAt.month)} '
+                      '${activity.occurredAt.year}',
                 ),
                 _detailRow(
                   Icons.access_time_rounded,
                   'Waktu',
-                  activity.time,
+                  _activityTime(activity),
                 ),
                 _detailRow(
                   Icons.delete_outline_rounded,

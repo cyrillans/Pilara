@@ -2,9 +2,49 @@ import 'package:flutter/material.dart';
 
 import '../data/dummy_articles.dart';
 import '../routers/app_router.dart';
+import '../services/pilara_api.dart';
 
-class ArticlesScreen extends StatelessWidget {
+class ArticlesScreen extends StatefulWidget {
   const ArticlesScreen({super.key});
+
+  @override
+  State<ArticlesScreen> createState() => _ArticlesScreenState();
+}
+
+class _ArticlesScreenState extends State<ArticlesScreen> {
+  late Future<List<Article>> _articlesFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _articlesFuture = _loadArticles();
+  }
+
+  Future<List<Article>> _loadArticles() async {
+    final metadata = await PilaraApi.instance.articles();
+    final fullContent = {
+      for (final article in dummyArticles) article.id: article
+    };
+    return metadata.map((item) {
+      final content = fullContent[item.id];
+      return Article(
+        id: item.id,
+        title: item.title,
+        description: item.description,
+        category: item.category,
+        readTime: item.readTime,
+        author: item.author,
+        updatedDate: item.updatedDate,
+        headerImage: item.headerImage,
+        icon: content?.icon ?? Icons.article_outlined,
+        introduction: content?.introduction ?? item.description,
+        sections: content?.sections ?? const [],
+        importantPoints: content?.importantPoints ?? const [],
+        sourceName: content?.sourceName ?? item.author,
+        sourceUrl: content?.sourceUrl ?? '',
+      );
+    }).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +59,6 @@ class ArticlesScreen extends StatelessWidget {
         backgroundColor: Colors.green[50],
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-
         leading: IconButton(
           icon: const Icon(
             Icons.arrow_back_ios_new_rounded,
@@ -29,7 +68,6 @@ class ArticlesScreen extends StatelessWidget {
             Navigator.pop(context);
           },
         ),
-
         title: const Text(
           'Artikel Pilara',
           style: TextStyle(
@@ -38,7 +76,6 @@ class ArticlesScreen extends StatelessWidget {
             fontWeight: FontWeight.bold,
           ),
         ),
-
         centerTitle: false,
       ),
 
@@ -46,25 +83,34 @@ class ArticlesScreen extends StatelessWidget {
       // BODY
       // ============================================================
 
-      body: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(
-          20,
-          10,
-          20,
-          30,
-        ),
-
-        itemCount: dummyArticles.length,
-
-        separatorBuilder: (_, __) {
-          return const SizedBox(height: 16);
-        },
-
-        itemBuilder: (context, index) {
-          final article = dummyArticles[index];
-
-          return _ArticleListCard(
-            article: article,
+      body: FutureBuilder<List<Article>>(
+        future: _articlesFuture,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Gagal memuat artikel: ${snapshot.error}'),
+                  TextButton(
+                    onPressed: () =>
+                        setState(() => _articlesFuture = _loadArticles()),
+                    child: const Text('Coba lagi'),
+                  ),
+                ],
+              ),
+            );
+          }
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final articles = snapshot.data!;
+          return ListView.separated(
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
+            itemCount: articles.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 16),
+            itemBuilder: (context, index) =>
+                _ArticleListCard(article: articles[index]),
           );
         },
       ),
@@ -93,14 +139,11 @@ class _ArticleListCard extends StatelessWidget {
           arguments: article,
         );
       },
-
       child: Container(
         width: double.infinity,
-
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-
           boxShadow: const [
             BoxShadow(
               color: Colors.black12,
@@ -109,9 +152,7 @@ class _ArticleListCard extends StatelessWidget {
             ),
           ],
         ),
-
         clipBehavior: Clip.antiAlias,
-
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -122,11 +163,9 @@ class _ArticleListCard extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               height: 180,
-
               child: Image.network(
                 article.headerImage,
                 fit: BoxFit.cover,
-
                 errorBuilder: (
                   context,
                   error,
@@ -134,7 +173,6 @@ class _ArticleListCard extends StatelessWidget {
                 ) {
                   return Container(
                     color: Colors.green.shade50,
-
                     child: Icon(
                       article.icon,
                       size: 55,
@@ -151,11 +189,8 @@ class _ArticleListCard extends StatelessWidget {
 
             Padding(
               padding: const EdgeInsets.all(16),
-
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
-
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // ------------------------------------------------
                   // CATEGORY
@@ -166,13 +201,10 @@ class _ArticleListCard extends StatelessWidget {
                       horizontal: 10,
                       vertical: 5,
                     ),
-
                     decoration: BoxDecoration(
                       color: Colors.green.shade50,
-                      borderRadius:
-                          BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(20),
                     ),
-
                     child: Text(
                       article.category,
                       style: TextStyle(
@@ -193,7 +225,6 @@ class _ArticleListCard extends StatelessWidget {
                     article.title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -211,7 +242,6 @@ class _ArticleListCard extends StatelessWidget {
                     article.description,
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
-
                     style: const TextStyle(
                       color: Colors.grey,
                       fontSize: 13,
@@ -232,9 +262,7 @@ class _ArticleListCard extends StatelessWidget {
                         size: 14,
                         color: Colors.grey.shade600,
                       ),
-
                       const SizedBox(width: 5),
-
                       Expanded(
                         child: Text(
                           article.updatedDate,
@@ -244,15 +272,12 @@ class _ArticleListCard extends StatelessWidget {
                           ),
                         ),
                       ),
-
                       Icon(
                         Icons.access_time_rounded,
                         size: 15,
                         color: Colors.grey.shade600,
                       ),
-
                       const SizedBox(width: 5),
-
                       Text(
                         article.readTime,
                         style: TextStyle(
@@ -270,9 +295,7 @@ class _ArticleListCard extends StatelessWidget {
                   // ------------------------------------------------
 
                   Row(
-                    mainAxisAlignment:
-                        MainAxisAlignment.end,
-
+                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       Text(
                         'Baca selengkapnya',
@@ -282,9 +305,7 @@ class _ArticleListCard extends StatelessWidget {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-
                       const SizedBox(width: 5),
-
                       Icon(
                         Icons.arrow_forward_rounded,
                         color: Colors.green.shade700,

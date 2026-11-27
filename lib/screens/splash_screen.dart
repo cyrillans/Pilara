@@ -1,6 +1,7 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
+import '../services/pilara_api.dart';
 import 'signin_screen.dart';
+import 'home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -13,17 +14,32 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
+    _restoreSession();
+  }
 
-    Timer(const Duration(seconds: 3), () {
+  Future<void> _restoreSession() async {
+    try {
+      final user = await PilaraApi.instance.restoreSession();
       if (!mounted) return;
-
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => const SignInScreen(),
+          builder: (context) =>
+              user == null ? const SignInScreen() : const HomeScreen(),
         ),
       );
-    });
+    } catch (_) {
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const SignInScreen(
+            initialMessage:
+                'Sesi tidak dapat dipulihkan. Silakan masuk kembali.',
+          ),
+        ),
+      );
+    }
   }
 
   @override

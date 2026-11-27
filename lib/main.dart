@@ -1,9 +1,13 @@
 
 import 'package:flutter/material.dart';
+
 import 'routers/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'services/pilala_firebase.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await PilalaFirebase.initialize();
   runApp(const MyApp());
 }
 

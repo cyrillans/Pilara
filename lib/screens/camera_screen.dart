@@ -1,11 +1,12 @@
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
+
+import '../services/pilara_api.dart';
 
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key});
@@ -62,8 +63,7 @@ class _CameraScreenState extends State<CameraScreen> {
       }
 
       final camera = cameras.firstWhere(
-        (camera) =>
-            camera.lensDirection == CameraLensDirection.back,
+        (camera) => camera.lensDirection == CameraLensDirection.back,
         orElse: () => cameras.first,
       );
 
@@ -214,11 +214,9 @@ class _CameraScreenState extends State<CameraScreen> {
       // READ IMAGE
       // =========================================================
 
-      final Uint8List imageBytes =
-          await File(path).readAsBytes();
+      final Uint8List imageBytes = await File(path).readAsBytes();
 
-      final img.Image? decodedImage =
-          img.decodeImage(imageBytes);
+      final img.Image? decodedImage = img.decodeImage(imageBytes);
 
       if (decodedImage == null) {
         throw Exception(
@@ -302,15 +300,27 @@ class _CameraScreenState extends State<CameraScreen> {
         );
       }
 
-      final label = _labels[bestIndex];
+      final label = _formatLabel(_labels[bestIndex]);
 
       if (!mounted) return;
 
       setState(() {
-        _prediction = _formatLabel(label);
+        _prediction = label;
         _confidence = bestScore;
         _isProcessing = false;
       });
+
+      try {
+        await PilaraApi.instance.recordClassification(
+          wasteType: label,
+        );
+      } catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Hasil dikenali, tetapi gagal disimpan: $error')),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
 
@@ -473,9 +483,7 @@ class _CameraScreenState extends State<CameraScreen> {
                     ),
                   ),
                 ),
-
                 const SizedBox(width: 15),
-
                 const Expanded(
                   child: Text(
                     'Identifikasi Sampah',
@@ -632,8 +640,7 @@ class _CameraScreenState extends State<CameraScreen> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
-        onPressed:
-            _isProcessing ? null : _retakePicture,
+        onPressed: _isProcessing ? null : _retakePicture,
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.white,
           foregroundColor: const Color(0xFF3F7040),
@@ -698,13 +705,10 @@ class _CameraScreenState extends State<CameraScreen> {
               size: 30,
             ),
           ),
-
           const SizedBox(width: 15),
-
           Expanded(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
                   'Hasil Identifikasi',
@@ -713,9 +717,7 @@ class _CameraScreenState extends State<CameraScreen> {
                     fontSize: 13,
                   ),
                 ),
-
                 const SizedBox(height: 3),
-
                 Text(
                   _prediction ?? '-',
                   style: const TextStyle(
@@ -724,9 +726,7 @@ class _CameraScreenState extends State<CameraScreen> {
                     color: Color(0xFF263329),
                   ),
                 ),
-
                 const SizedBox(height: 3),
-
                 Text(
                   'Keyakinan '
                   '${confidence.toStringAsFixed(1)}%',
@@ -759,9 +759,7 @@ class _CameraScreenState extends State<CameraScreen> {
               color: Colors.white,
               size: 70,
             ),
-
             const SizedBox(height: 20),
-
             const Text(
               'Kamera tidak dapat digunakan.',
               textAlign: TextAlign.center,
@@ -771,9 +769,7 @@ class _CameraScreenState extends State<CameraScreen> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-
             const SizedBox(height: 10),
-
             const Text(
               'Pastikan izin kamera sudah diberikan.',
               textAlign: TextAlign.center,
@@ -781,9 +777,7 @@ class _CameraScreenState extends State<CameraScreen> {
                 color: Colors.white70,
               ),
             ),
-
             const SizedBox(height: 25),
-
             ElevatedButton(
               onPressed: () {
                 setState(() {

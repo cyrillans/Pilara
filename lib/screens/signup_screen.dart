@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../services/pilara_api.dart';
+import 'home_screen.dart';
+
 // ==================================================================
 // PALET WARNA (Selaras dengan Home & Sign In)
 // ==================================================================
@@ -38,7 +41,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
 
-  void register() {
+  Future<void> register() async {
     if (!_formKey.currentState!.validate()) return;
 
     final name = nameController.text.trim();
@@ -55,19 +58,33 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     setState(() => _isLoading = true);
 
-    // Simulasi loading registrasi
-    Future.delayed(const Duration(seconds: 1), () {
+    try {
+      await PilaraApi.instance.register(
+        name: name,
+        email: email,
+        password: password,
+      );
       if (!mounted) return;
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Registrasi berhasil! Silakan masuk.'),
+          content: Text('Registrasi berhasil.'),
           backgroundColor: _kPrimaryGreen,
           behavior: SnackBarBehavior.floating,
         ),
       );
-      Navigator.pop(context); // Kembali ke Sign In
-    });
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+        (_) => false,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal mendaftar: $error')),
+      );
+    }
   }
 
   void _registerWithGoogle() {
@@ -153,7 +170,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     decoration: InputDecoration(
                       labelText: 'Nama Lengkap',
                       hintText: 'Masukkan nama lengkap',
-                      prefixIcon: const Icon(Icons.person_outline, color: _kPrimaryGreen),
+                      prefixIcon: const Icon(Icons.person_outline,
+                          color: _kPrimaryGreen),
                       filled: true,
                       fillColor: _kSageBg,
                       border: OutlineInputBorder(
@@ -166,11 +184,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: _kPrimaryGreen, width: 1.5),
+                        borderSide:
+                            const BorderSide(color: _kPrimaryGreen, width: 1.5),
                       ),
                     ),
                     validator: (value) {
-                      if (value == null || value.isEmpty) return 'Nama tidak boleh kosong';
+                      if (value == null || value.isEmpty)
+                        return 'Nama tidak boleh kosong';
                       return null;
                     },
                   ),
@@ -184,7 +204,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     decoration: InputDecoration(
                       labelText: 'Email',
                       hintText: 'nama@email.com',
-                      prefixIcon: const Icon(Icons.email_outlined, color: _kPrimaryGreen),
+                      prefixIcon: const Icon(Icons.email_outlined,
+                          color: _kPrimaryGreen),
                       filled: true,
                       fillColor: _kSageBg,
                       border: OutlineInputBorder(
@@ -197,12 +218,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: _kPrimaryGreen, width: 1.5),
+                        borderSide:
+                            const BorderSide(color: _kPrimaryGreen, width: 1.5),
                       ),
                     ),
                     validator: (value) {
-                      if (value == null || value.isEmpty) return 'Email tidak boleh kosong';
-                      if (!value.contains('@')) return 'Format email tidak valid';
+                      if (value == null || value.isEmpty)
+                        return 'Email tidak boleh kosong';
+                      if (!value.contains('@'))
+                        return 'Format email tidak valid';
                       return null;
                     },
                   ),
@@ -215,7 +239,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     style: const TextStyle(fontSize: 15),
                     decoration: InputDecoration(
                       labelText: 'Password',
-                      prefixIcon: const Icon(Icons.lock_outline, color: _kPrimaryGreen),
+                      prefixIcon:
+                          const Icon(Icons.lock_outline, color: _kPrimaryGreen),
                       filled: true,
                       fillColor: _kSageBg,
                       border: OutlineInputBorder(
@@ -228,19 +253,25 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: _kPrimaryGreen, width: 1.5),
+                        borderSide:
+                            const BorderSide(color: _kPrimaryGreen, width: 1.5),
                       ),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                          isPasswordVisible
+                              ? Icons.visibility
+                              : Icons.visibility_off,
                           color: _kMutedText,
                         ),
-                        onPressed: () => setState(() => isPasswordVisible = !isPasswordVisible),
+                        onPressed: () => setState(
+                            () => isPasswordVisible = !isPasswordVisible),
                       ),
                     ),
                     validator: (value) {
-                      if (value == null || value.isEmpty) return 'Password tidak boleh kosong';
-                      if (value.length < 6) return 'Password minimal 6 karakter';
+                      if (value == null || value.isEmpty)
+                        return 'Password tidak boleh kosong';
+                      if (value.length < 6)
+                        return 'Password minimal 6 karakter';
                       return null;
                     },
                   ),
@@ -253,7 +284,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     style: const TextStyle(fontSize: 15),
                     decoration: InputDecoration(
                       labelText: 'Konfirmasi Password',
-                      prefixIcon: const Icon(Icons.lock_outline, color: _kPrimaryGreen),
+                      prefixIcon:
+                          const Icon(Icons.lock_outline, color: _kPrimaryGreen),
                       filled: true,
                       fillColor: _kSageBg,
                       border: OutlineInputBorder(
@@ -266,20 +298,26 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: _kPrimaryGreen, width: 1.5),
+                        borderSide:
+                            const BorderSide(color: _kPrimaryGreen, width: 1.5),
                       ),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          isConfirmPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                          isConfirmPasswordVisible
+                              ? Icons.visibility
+                              : Icons.visibility_off,
                           color: _kMutedText,
                         ),
-                        onPressed: () => setState(
-                            () => isConfirmPasswordVisible = !isConfirmPasswordVisible),
+                        onPressed: () => setState(() =>
+                            isConfirmPasswordVisible =
+                                !isConfirmPasswordVisible),
                       ),
                     ),
                     validator: (value) {
-                      if (value == null || value.isEmpty) return 'Konfirmasi password tidak boleh kosong';
-                      if (value != passwordController.text) return 'Password tidak sama';
+                      if (value == null || value.isEmpty)
+                        return 'Konfirmasi password tidak boleh kosong';
+                      if (value != passwordController.text)
+                        return 'Password tidak sama';
                       return null;
                     },
                   ),
@@ -356,7 +394,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           Container(
                             width: 24,
                             height: 24,
-                            decoration: const BoxDecoration(shape: BoxShape.circle),
+                            decoration:
+                                const BoxDecoration(shape: BoxShape.circle),
                             child: const Center(
                               child: Text(
                                 'G',

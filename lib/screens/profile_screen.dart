@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../routers/app_router.dart';
+import '../services/google_auth_service.dart';
+import '../services/pilara_api.dart';
+
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -9,6 +13,33 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _notificationEnabled = true;
+  AppUser? _user;
+  ActivitySummary? _activitySummary;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      final results = await Future.wait<Object>([
+        PilaraApi.instance.currentUser(),
+        PilaraApi.instance.activities(),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _user = results[0] as AppUser;
+        _activitySummary = results[1] as ActivitySummary;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal memuat profil: $error')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,41 +58,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildHeader(),
-
               const SizedBox(height: 24),
-
               _buildProfileCard(),
-
               const SizedBox(height: 26),
-
               _buildSectionTitle('Akun'),
-
               const SizedBox(height: 10),
-
               _buildAccountSection(),
-
               const SizedBox(height: 24),
-
               _buildSectionTitle('Preferensi'),
-
               const SizedBox(height: 10),
-
               _buildPreferenceSection(),
-
               const SizedBox(height: 24),
-
               _buildSectionTitle('Bantuan & Informasi'),
-
               const SizedBox(height: 10),
-
               _buildHelpSection(),
-
               const SizedBox(height: 26),
-
               _buildLogoutButton(),
-
               const SizedBox(height: 18),
-
               Center(
                 child: Column(
                   children: [
@@ -98,7 +111,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildHeader() {
     return Row(
       children: [
-        const Expanded(
+        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -123,7 +136,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
         ),
-
         Container(
           width: 44,
           height: 44,
@@ -188,7 +200,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       color: Color(0xFF1E8E5A),
                     ),
                   ),
-
                   Positioned(
                     right: 0,
                     bottom: 1,
@@ -212,35 +223,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ],
               ),
-
               const SizedBox(width: 15),
-
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Cyrilla',
+                      _user?.name ?? 'Memuat profil...',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
                         color: Color(0xFF17231D),
                       ),
                     ),
-
                     SizedBox(height: 4),
-
                     Text(
-                      'Eco Enthusiast 🌱',
+                      _user?.bio.isNotEmpty == true
+                          ? _user!.bio
+                          : 'Pengguna Pilara',
                       style: TextStyle(
                         fontSize: 12,
                         color: Color(0xFF68736D),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-
                     SizedBox(height: 7),
-
                     Row(
                       children: [
                         Icon(
@@ -250,7 +257,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         SizedBox(width: 4),
                         Text(
-                          'cyrilla@email.com',
+                          _user?.email ?? '',
                           style: TextStyle(
                             fontSize: 10,
                             color: Color(0xFF8A948E),
@@ -263,50 +270,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ],
           ),
-
           const SizedBox(height: 20),
-
           Container(
             height: 1,
             color: const Color(0xFFEEF1EF),
           ),
-
           const SizedBox(height: 17),
-
           Row(
             children: [
               Expanded(
                 child: _profileStat(
                   icon: Icons.stars_rounded,
-                  value: '1.250',
+                  value: _activitySummary?.totalPoints.toString() ?? '—',
                   label: 'Poin',
                 ),
               ),
-
               Container(
                 width: 1,
                 height: 38,
                 color: const Color(0xFFE8ECE9),
               ),
-
               Expanded(
                 child: _profileStat(
                   icon: Icons.workspace_premium_rounded,
-                  value: 'Level 3',
+                  value: 'Level —',
                   label: 'Level',
                 ),
               ),
-
               Container(
                 width: 1,
                 height: 38,
                 color: const Color(0xFFE8ECE9),
               ),
-
               Expanded(
                 child: _profileStat(
                   icon: Icons.local_fire_department_rounded,
-                  value: '5 hari',
+                  value: '—',
                   label: 'Streak',
                 ),
               ),
@@ -333,9 +332,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           size: 19,
           color: const Color(0xFF1E8E5A),
         ),
-
         const SizedBox(height: 6),
-
         Text(
           value,
           style: const TextStyle(
@@ -344,9 +341,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             color: Color(0xFF17231D),
           ),
         ),
-
         const SizedBox(height: 2),
-
         Text(
           label,
           style: TextStyle(
@@ -386,13 +381,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           iconColor: const Color(0xFF1E8E5A),
           title: 'Edit Profil',
           subtitle: 'Nama, foto, dan informasi akun',
-          onTap: () {
-            _showComingSoon('Edit Profil');
-          },
+          onTap: _editProfile,
         ),
-
         _buildDivider(),
-
         _buildMenuItem(
           icon: Icons.email_outlined,
           iconBackground: const Color(0xFFEAF1FB),
@@ -403,9 +394,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _showComingSoon('Email & Akun');
           },
         ),
-
         _buildDivider(),
-
         _buildMenuItem(
           icon: Icons.location_on_outlined,
           iconBackground: const Color(0xFFFFF1E3),
@@ -428,9 +417,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return _buildMenuContainer(
       children: [
         _buildNotificationItem(),
-
         _buildDivider(),
-
         _buildMenuItem(
           icon: Icons.dark_mode_outlined,
           iconBackground: const Color(0xFFF0ECF9),
@@ -441,9 +428,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _showComingSoon('Pengaturan Tampilan');
           },
         ),
-
         _buildDivider(),
-
         _buildMenuItem(
           icon: Icons.language_rounded,
           iconBackground: const Color(0xFFE9F2F8),
@@ -483,9 +468,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               size: 21,
             ),
           ),
-
           const SizedBox(width: 12),
-
           const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -498,9 +481,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     color: Color(0xFF17231D),
                   ),
                 ),
-
                 SizedBox(height: 3),
-
                 Text(
                   'Pengingat dan update aktivitas',
                   style: TextStyle(
@@ -511,7 +492,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
-
           Switch.adaptive(
             value: _notificationEnabled,
             activeColor: Color(0xFF1E8E5A),
@@ -543,9 +523,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _showComingSoon('Pusat Bantuan');
           },
         ),
-
         _buildDivider(),
-
         _buildMenuItem(
           icon: Icons.shield_outlined,
           iconBackground: const Color(0xFFEFF3EC),
@@ -556,9 +534,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _showComingSoon('Privasi & Keamanan');
           },
         ),
-
         _buildDivider(),
-
         _buildMenuItem(
           icon: Icons.info_outline_rounded,
           iconBackground: const Color(0xFFF0F0F0),
@@ -630,13 +606,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 size: 21,
               ),
             ),
-
             const SizedBox(width: 12),
-
             Expanded(
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     title,
@@ -646,9 +619,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       color: Color(0xFF17231D),
                     ),
                   ),
-
                   const SizedBox(height: 3),
-
                   Text(
                     subtitle,
                     maxLines: 1,
@@ -661,7 +632,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
             ),
-
             const Icon(
               Icons.chevron_right_rounded,
               color: Color(0xFFABB3AE),
@@ -716,9 +686,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               size: 19,
               color: Color(0xFFD9534F),
             ),
-
             SizedBox(width: 8),
-
             Text(
               'Keluar dari Akun',
               style: TextStyle(
@@ -750,6 +718,69 @@ class _ProfileScreenState extends State<ProfileScreen> {
         duration: const Duration(seconds: 2),
       ),
     );
+  }
+
+  Future<void> _editProfile() async {
+    final user = _user;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profil belum dimuat. Coba lagi nanti.')),
+      );
+      return;
+    }
+    final nameController = TextEditingController(text: user.name);
+    final bioController = TextEditingController(text: user.bio);
+    final shouldSave = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Profil'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(labelText: 'Nama'),
+            ),
+            TextField(
+              controller: bioController,
+              maxLength: 280,
+              decoration: const InputDecoration(labelText: 'Bio'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Simpan'),
+          ),
+        ],
+      ),
+    );
+    if (shouldSave != true) {
+      nameController.dispose();
+      bioController.dispose();
+      return;
+    }
+    try {
+      final updated = await PilaraApi.instance.updateProfile(
+        name: nameController.text.trim(),
+        bio: bioController.text.trim(),
+      );
+      if (mounted) setState(() => _user = updated);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal memperbarui profil: $error')),
+        );
+      }
+    } finally {
+      nameController.dispose();
+      bioController.dispose();
+    }
   }
 
   // ============================================================
@@ -805,6 +836,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ============================================================
 
   void _showLogoutDialog() {
+    final navigator = Navigator.of(context);
     showDialog(
       context: context,
       builder: (context) {
@@ -839,11 +871,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.pop(context);
-
-                // Nanti diarahkan ke halaman login
-                // menggunakan AppRouter.signin.
+                try {
+                  await GoogleAuthService.instance.signOut();
+                  await PilaraApi.instance.logout();
+                  if (!mounted) return;
+                  navigator.pushNamedAndRemoveUntil(
+                    AppRouter.signin,
+                    (_) => false,
+                  );
+                } catch (error) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(this.context).showSnackBar(
+                    SnackBar(content: Text('Gagal keluar: $error')),
+                  );
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFD9534F),

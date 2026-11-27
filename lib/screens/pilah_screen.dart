@@ -7,7 +7,8 @@ import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/theme/app_colors.dart';
-import '../data/dummy_pilah.dart';
+import '../models/pilah_location.dart';
+import '../services/pilara_api.dart';
 
 // ==================================================================
 // TOKEN DESAIN
@@ -18,8 +19,8 @@ const Color _muted = Color(0xFF75837B);
 const Color _line = Color(0xFFE9EEEA);
 const Color _openColor = Color(0xFF2E9E5B);
 
-// Fallback sebelum GPS aktif: sekitar kampus USU, Medan (data dummy ada di Sumut).
-const LatLng _fallbackCenter = LatLng(3.5650, 98.6560);
+// Keep the legacy screen's default map center until GPS or API locations load.
+const LatLng _fallbackCenter = LatLng(0.5071, 101.4478);
 
 extension _CategoryUi on PilahCategory {
   Color get color => Color(colorValue);
@@ -79,6 +80,9 @@ class _PilahScreenState extends State<PilahScreen> {
 
   LatLng? _user;
   bool _loadingLocation = true;
+  bool _loadingPlaces = true;
+  String? _placesError;
+  List<PilahLocation> _locations = [];
 
   PilahCategory? _category; // null = semua
   bool _openOnly = false;
@@ -97,7 +101,41 @@ class _PilahScreenState extends State<PilahScreen> {
         _sheetExtent.value = _sheetController.size;
       }
     });
+    unawaited(_loadWastePoints());
     unawaited(_getCurrentLocation());
+  }
+
+  Future<void> _loadWastePoints() async {
+    if (mounted) {
+      setState(() {
+        _loadingPlaces = true;
+        _placesError = null;
+      });
+    }
+    try {
+      final locations = await PilaraApi.instance.wastePoints();
+      if (!mounted) return;
+      setState(() {
+        _locations = locations;
+        _loadingPlaces = false;
+      });
+      if (_user == null && locations.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || _user != null) return;
+          final first = locations.first;
+          _mapController.move(
+            LatLng(first.latitude, first.longitude),
+            12,
+          );
+        });
+      }
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _placesError = error.toString();
+        _loadingPlaces = false;
+      });
+    }
   }
 
   @override
@@ -193,6 +231,7 @@ class _PilahScreenState extends State<PilahScreen> {
   List<PilahLocation> get _results {
     final now = DateTime.now();
     var list = searchPilah(
+      locations: _locations,
       query: _query,
       category: _category,
       userLat: _user?.latitude,
@@ -239,7 +278,8 @@ class _PilahScreenState extends State<PilahScreen> {
     final phone = p.phone;
     if (phone == null) return;
     final number = phone.replaceAll(RegExp(r'[^0-9+]'), '');
-    await _launch(Uri(scheme: 'tel', path: number), 'Tidak bisa melakukan panggilan.');
+    await _launch(
+        Uri(scheme: 'tel', path: number), 'Tidak bisa melakukan panggilan.');
   }
 
   Future<void> _launch(Uri uri, String errorMessage) async {
@@ -419,7 +459,8 @@ class _PilahScreenState extends State<PilahScreen> {
           suffixIcon: _query.isNotEmpty
               ? IconButton(
                   onPressed: _searchController.clear,
-                  icon: const Icon(Icons.close_rounded, size: 20, color: _muted),
+                  icon:
+                      const Icon(Icons.close_rounded, size: 20, color: _muted),
                 )
               : null,
           border: InputBorder.none,
@@ -451,7 +492,8 @@ class _PilahScreenState extends State<PilahScreen> {
               label: c.label,
               dot: c.color,
               selected: _category == c,
-              onTap: () => setState(() => _category = _category == c ? null : c),
+              onTap: () =>
+                  setState(() => _category = _category == c ? null : c),
             ),
           ],
           const SizedBox(width: 8),
@@ -651,7 +693,16 @@ class _PilahScreenState extends State<PilahScreen> {
               SliverToBoxAdapter(child: _buildSheetHeader(places.length)),
               if (_user == null && !_loadingLocation)
                 SliverToBoxAdapter(child: _buildLocationPrompt()),
-              if (places.isEmpty)
+              if (_loadingPlaces)
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.all(32),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                )
+              else if (_placesError != null)
+                SliverToBoxAdapter(child: _buildPlacesError())
+              else if (places.isEmpty)
                 SliverToBoxAdapter(child: _buildEmptyState())
               else
                 SliverList.separated(
@@ -660,8 +711,7 @@ class _PilahScreenState extends State<PilahScreen> {
                     padding: EdgeInsets.symmetric(horizontal: 20),
                     child: Divider(height: 1, thickness: 1, color: _line),
                   ),
-                  itemBuilder: (context, i) =>
-                      _buildPlaceTile(places[i], now),
+                  itemBuilder: (context, i) => _buildPlaceTile(places[i], now),
                 ),
               const SliverToBoxAdapter(child: SizedBox(height: 32)),
             ],
@@ -847,6 +897,28 @@ class _PilahScreenState extends State<PilahScreen> {
     );
   }
 
+  Widget _buildPlacesError() {
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          Text(
+            _placesError!,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: _muted),
+          ),
+          const SizedBox(height: 8),
+          _ActionButton(
+            label: 'Coba lagi',
+            height: 40,
+            radius: 20,
+            onTap: _loadWastePoints,
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildEmptyState() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
@@ -969,7 +1041,8 @@ class _PilahScreenState extends State<PilahScreen> {
                       ),
                       const SizedBox(width: 10),
                       Flexible(
-                        child: _StatusDot(open: open, label: p.statusLabel(now)),
+                        child:
+                            _StatusDot(open: open, label: p.statusLabel(now)),
                       ),
                     ],
                   ),
@@ -1372,7 +1445,8 @@ class _ActionButton extends StatelessWidget {
     return Material(
       color: background,
       clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius)),
+      shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius)),
       child: InkWell(
         onTap: onTap,
         child: Container(

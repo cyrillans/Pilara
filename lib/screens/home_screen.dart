@@ -1,9 +1,15 @@
+import 'dart:typed_data';
+
+import 'package:firebase_ai/firebase_ai.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../core/theme/app_colors.dart';
-import '../data/dummy_home.dart';
-import '../data/dummy_articles.dart';
 import '../routers/app_router.dart';
+import '../services/deteksi_sampah_service.dart';
+import '../services/kebersihan_ai_service.dart';
+import '../services/pilara_api.dart';
 import 'camera_screen.dart';
 import 'profile_screen.dart';
 import 'pilah_screen.dart';
@@ -104,8 +110,14 @@ class AppStrings {
       'month_dec': 'Des',
       'going': 'ikut',
       'join_short': 'Ikut',
+      'leave_short': 'Batal',
+      'event_full': 'Penuh',
+      'events_empty': 'Belum ada acara',
+      'events_load_error': 'Acara gagal dimuat. Coba lagi.',
+      'retry': 'Coba lagi',
       'activity_empty_title': 'Belum ada aktivitas',
-      'activity_empty_desc': 'Scan sampah pertamamu untuk mulai mengumpulkan poin.',
+      'activity_empty_desc':
+          'Scan sampah pertamamu untuk mulai mengumpulkan poin.',
       'ev3_title': 'Setor Bareng Bank Sampah',
       'ev3_loc': 'Bank Sampah Melati',
     };
@@ -185,6 +197,11 @@ class AppStrings {
       'month_dec': 'Dec',
       'going': 'going',
       'join_short': 'Join',
+      'leave_short': 'Leave',
+      'event_full': 'Full',
+      'events_empty': 'No events available',
+      'events_load_error': 'Events failed to load. Tap to retry.',
+      'retry': 'Retry',
       'activity_empty_title': 'No activity yet',
       'activity_empty_desc': 'Scan your first waste to start earning points.',
       'ev3_title': 'Group Drop-off at Waste Bank',
@@ -197,17 +214,6 @@ class AppStrings {
 // ==================================================================
 // DATA PLACEHOLDER
 // ==================================================================
-
-const int _pointsPerLevel = 100;
-const int _currentPoints = 0;
-
-// Foto cup kopi untuk Tantangan Mingguan
-const String _imgCoffee =
-    'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=800&auto=format&fit=crop';
-const String _imgFood =
-    'https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=400&auto=format&fit=crop';
-const String _imgEcoLiving =
-    'https://images.unsplash.com/photo-1584473457409-ae5c91d7d8b1?q=80&w=400&auto=format&fit=crop';
 
 // ==================================================================
 // HOME SCREEN
@@ -222,16 +228,23 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int currentIndex = 0;
+  final _homeKey = GlobalKey<_HomeContentState>();
 
-  void _goTo(int index) => setState(() => currentIndex = index);
+  void _goTo(int index) {
+    if (index == 0 && currentIndex != 0) {
+      _homeKey.currentState?._loadDashboard();
+      _homeKey.currentState?._loadEvents();
+    }
+    setState(() => currentIndex = index);
+  }
 
   late final List<Widget> pages = [
-  HomeContent(onNavigateTab: _goTo),
-  const CameraScreen(),
-  const PilahScreen(),
-  const LearnScreen(),
-  const ProfileScreen(),
-];
+    HomeContent(key: _homeKey, onNavigateTab: _goTo),
+    const CameraScreen(),
+    const PilahScreen(),
+    const LearnScreen(),
+    const ProfileScreen(),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -353,7 +366,8 @@ class _BottomBar extends StatelessWidget {
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.primaryGreen.withValues(alpha: 0.3),
+                            color:
+                                AppColors.primaryGreen.withValues(alpha: 0.3),
                             blurRadius: 16,
                             offset: const Offset(0, 6),
                           ),
@@ -427,8 +441,6 @@ class _NavItem extends StatelessWidget {
 // WARNA AKSEN TAMBAHAN (untuk ikon & kartu berwarna)
 // ==================================================================
 
-const Color _kAmberBg = Color(0xFFFFF3DC);
-const Color _kAmberFg = Color(0xFFF2A100);
 const Color _kBlueBg = Color(0xFFE8F1FE);
 const Color _kBlueFg = Color(0xFF3B82F6);
 const Color _kRoseBg = Color(0xFFFDE8EC);
@@ -447,8 +459,6 @@ class _AppButton extends StatelessWidget {
   final IconData? icon;
   final Color background;
   final Color foreground;
-  final Color? borderColor;
-  final bool expand;
   final double height;
   final double fontSize;
   final double radius;
@@ -459,8 +469,6 @@ class _AppButton extends StatelessWidget {
     this.icon,
     this.background = AppColors.primaryGreen,
     this.foreground = AppColors.white,
-    this.borderColor,
-    this.expand = false,
     this.height = 46,
     this.fontSize = 14,
     this.radius = 14,
@@ -473,15 +481,12 @@ class _AppButton extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(radius),
-        side: borderColor == null
-            ? BorderSide.none
-            : BorderSide(color: borderColor!, width: 1.2),
+        side: BorderSide.none,
       ),
       child: InkWell(
         onTap: onTap,
         child: Container(
           height: height,
-          width: expand ? double.infinity : null,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           alignment: Alignment.center,
           child: Row(
@@ -529,6 +534,98 @@ class HomeContent extends StatefulWidget {
 class _HomeContentState extends State<HomeContent> {
   static const double _hPad = 20;
   static const double _gap = 22; // jarak antar section
+  AppUser? _user;
+  ActivitySummary? _activitySummary;
+  List<CommunityEvent> _events = [];
+  final Set<String> _eventActionsInProgress = {};
+  bool _isLoadingDashboard = true;
+  bool _isLoadingEvents = true;
+  String? _dashboardError;
+  String? _eventsError;
+  late Future<List<ArticleMetadata>> _articlesFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDashboard();
+    _loadEvents();
+    _articlesFuture = PilaraApi.instance.articles();
+  }
+
+  Future<void> _loadEvents() async {
+    if (mounted) {
+      setState(() {
+        _isLoadingEvents = true;
+        _eventsError = null;
+      });
+    }
+    try {
+      final events = await PilaraApi.instance.events();
+      if (!mounted) return;
+      setState(() {
+        _events = events;
+        _isLoadingEvents = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _eventsError = error.toString();
+        _isLoadingEvents = false;
+      });
+    }
+  }
+
+  Future<void> _toggleEventRegistration(CommunityEvent event) async {
+    if (_eventActionsInProgress.contains(event.id)) return;
+    setState(() => _eventActionsInProgress.add(event.id));
+    try {
+      final updated = event.isJoined
+          ? await PilaraApi.instance.leaveEvent(event.id)
+          : await PilaraApi.instance.joinEvent(event.id);
+      if (!mounted) return;
+      setState(() {
+        final index = _events.indexWhere((item) => item.id == event.id);
+        if (index != -1) _events[index] = updated;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+      await _loadEvents();
+    } finally {
+      if (mounted) {
+        setState(() => _eventActionsInProgress.remove(event.id));
+      }
+    }
+  }
+
+  Future<void> _loadDashboard() async {
+    if (mounted) {
+      setState(() {
+        _isLoadingDashboard = true;
+        _dashboardError = null;
+      });
+    }
+    try {
+      final results = await Future.wait<Object>([
+        PilaraApi.instance.currentUser(),
+        PilaraApi.instance.activities(),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _user = results[0] as AppUser;
+        _activitySummary = results[1] as ActivitySummary;
+        _isLoadingDashboard = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _dashboardError = error.toString();
+        _isLoadingDashboard = false;
+      });
+    }
+  }
 
   String _greeting(AppStrings s) {
     final hour = DateTime.now().hour;
@@ -544,7 +641,6 @@ class _HomeContentState extends State<HomeContent> {
       );
 
   Widget _section(
-    AppStrings s,
     String title,
     Widget child, {
     bool padChild = true,
@@ -552,7 +648,7 @@ class _HomeContentState extends State<HomeContent> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _px(_SectionHeader(title, actionLabel: s.t('show_all'))),
+        _px(_SectionHeader(title)),
         const SizedBox(height: 10),
         padChild ? _px(child) : child,
       ],
@@ -561,8 +657,7 @@ class _HomeContentState extends State<HomeContent> {
 
   void _goScan() => widget.onNavigateTab?.call(1);
 
-  // User baru = belum punya poin/aktivitas -> tampilkan empty state & statistik 0
-  bool get _hasActivity => _currentPoints > 0;
+  bool get _hasActivity => (_activitySummary?.totalActivities ?? 0) > 0;
 
   @override
   Widget build(BuildContext context) {
@@ -596,7 +691,6 @@ class _HomeContentState extends State<HomeContent> {
 
                   // Tantangan Mingguan
                   _section(
-                    s,
                     s.t('weekly_challenge'),
                     _ChallengeCard(s: s),
                   ),
@@ -604,7 +698,6 @@ class _HomeContentState extends State<HomeContent> {
 
                   // Komunitas
                   _section(
-                    s,
                     s.t('community_title'),
                     _buildCommunity(s),
                     padChild: false,
@@ -613,7 +706,6 @@ class _HomeContentState extends State<HomeContent> {
 
                   // Aktivitas Terbaru
                   _section(
-                    s,
                     s.t('recent_activity'),
                     _buildActivity(s),
                   ),
@@ -621,7 +713,6 @@ class _HomeContentState extends State<HomeContent> {
 
                   // Tips Ramah Lingkungan
                   _section(
-                    s,
                     s.t('sustainability_tips'),
                     _buildTips(s),
                     padChild: false,
@@ -630,7 +721,6 @@ class _HomeContentState extends State<HomeContent> {
 
                   // Kategori Sampah
                   _section(
-                    s,
                     s.t('waste_category'),
                     _WasteCategoryGrid(lang: lang),
                   ),
@@ -695,11 +785,11 @@ class _HomeContentState extends State<HomeContent> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Halo, Charlotte!',
+              Text(
+                'Halo, ${_user?.name ?? ''}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 12,
                   color: _kMutedText,
                   fontWeight: FontWeight.w500,
@@ -790,8 +880,7 @@ class _HomeContentState extends State<HomeContent> {
   }
 
   Widget _buildHeroCard(AppStrings s) {
-    final progress =
-        (_currentPoints / _pointsPerLevel).clamp(0.0, 1.0).toDouble();
+    final points = _activitySummary?.totalPoints ?? 0;
 
     return Container(
       decoration: BoxDecoration(
@@ -825,7 +914,7 @@ class _HomeContentState extends State<HomeContent> {
                             ),
                           ),
                           Text(
-                            '$_currentPoints',
+                            '$points',
                             style: const TextStyle(
                               fontSize: 32,
                               height: 1.1,
@@ -855,7 +944,7 @@ class _HomeContentState extends State<HomeContent> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            '${s.t('level_badge')} 0',
+                            '${s.t('level_badge')} —',
                             style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
@@ -868,21 +957,11 @@ class _HomeContentState extends State<HomeContent> {
                   ],
                 ),
                 const SizedBox(height: 10),
-                // Baris 2: progress bar + teks
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 6,
-                    backgroundColor: AppColors.white.withValues(alpha: 0.25),
-                    valueColor: const AlwaysStoppedAnimation<Color>(
-                      AppColors.white,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 10),
                 Text(
-                  s.t('progress_level'),
+                  appLanguage.value == 0
+                      ? 'Level belum tersedia'
+                      : 'Level is not available yet',
                   style: TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w500,
@@ -897,12 +976,12 @@ class _HomeContentState extends State<HomeContent> {
                   children: [
                     _InlineStat(
                       icon: Icons.recycling_rounded,
-                      value: _hasActivity ? '3.5 kg' : '0 kg',
+                      value: '—',
                       label: s.t('recycled'),
                     ),
                     _InlineStat(
                       icon: Icons.eco_rounded,
-                      value: _hasActivity ? '5.2 g' : '0 g',
+                      value: '—',
                       label: s.t('co2_saved'),
                     ),
                   ],
@@ -920,48 +999,99 @@ class _HomeContentState extends State<HomeContent> {
   // ----------------------------------------------------------------
 
   Widget _buildCommunity(AppStrings s) {
-    final events = <Widget>[
-      _CommunityCard(
-        title: s.t('ev1_title'),
-        location: s.t('ev1_loc'),
-        day: '30',
-        month: s.t('month_nov'),
-        going: '48 ${s.t('going')}',
-        type: _EventType.cleanup,
-        joinLabel: s.t('join_short'),
-        joinedLabel: s.t('joined'),
-      ),
-      _CommunityCard(
-        title: s.t('ev2_title'),
-        location: s.t('ev2_loc'),
-        day: '06',
-        month: s.t('month_dec'),
-        going: '126 ${s.t('going')}',
-        type: _EventType.workshop,
-        joinLabel: s.t('join_short'),
-        joinedLabel: s.t('joined'),
-      ),
-      _CommunityCard(
-        title: s.t('ev3_title'),
-        location: s.t('ev3_loc'),
-        day: '12',
-        month: s.t('month_dec'),
-        going: '32 ${s.t('going')}',
-        type: _EventType.bank,
-        joinLabel: s.t('join_short'),
-        joinedLabel: s.t('joined'),
-      ),
-    ];
-
+    if (_isLoadingEvents) {
+      return const SizedBox(
+        height: 226,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (_eventsError != null) {
+      return SizedBox(
+        height: 226,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(s.t('events_load_error')),
+              const SizedBox(height: 4),
+              Text(
+                _eventsError!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 11, color: _kMutedText),
+              ),
+              TextButton(
+                onPressed: _loadEvents,
+                child: Text(s.t('retry')),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    if (_events.isEmpty) {
+      return SizedBox(
+        height: 226,
+        child: Center(child: Text(s.t('events_empty'))),
+      );
+    }
     return SizedBox(
       height: 226,
-      child: ListView.separated(
+      child: ListView(
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: _hPad),
-        itemCount: events.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
-        itemBuilder: (context, index) => events[index],
+        children: _events.map((event) {
+          final date = event.startsAt;
+          final monthNames = s.lang == 0
+              ? const [
+                  'Jan',
+                  'Feb',
+                  'Mar',
+                  'Apr',
+                  'Mei',
+                  'Jun',
+                  'Jul',
+                  'Agu',
+                  'Sep',
+                  'Okt',
+                  'Nov',
+                  'Des',
+                ]
+              : const [
+                  'Jan',
+                  'Feb',
+                  'Mar',
+                  'Apr',
+                  'May',
+                  'Jun',
+                  'Jul',
+                  'Aug',
+                  'Sep',
+                  'Oct',
+                  'Nov',
+                  'Dec',
+                ];
+          final type = switch (event.type) {
+            'workshop' => _EventType.workshop,
+            'bank' => _EventType.bank,
+            _ => _EventType.cleanup,
+          };
+          return Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: _CommunityCard(
+              event: event,
+              day: date.day.toString(),
+              month: monthNames[date.month - 1],
+              going: '${event.participantCount} ${s.t('going')}',
+              type: type,
+              joinLabel: s.t('join_short'),
+              joinedLabel: s.t('leave_short'),
+              fullLabel: s.t('event_full'),
+              busy: _eventActionsInProgress.contains(event.id),
+              onToggle: () => _toggleEventRegistration(event),
+            ),
+          );
+        }).toList(),
       ),
     );
   }
@@ -971,6 +1101,21 @@ class _HomeContentState extends State<HomeContent> {
   // ----------------------------------------------------------------
 
   Widget _buildActivity(AppStrings s) {
+    if (_isLoadingDashboard) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+    if (_dashboardError != null) {
+      return _ActivityEmpty(
+        title: 'Aktivitas tidak dapat dimuat',
+        subtitle: _dashboardError!,
+        onTap: _loadDashboard,
+      );
+    }
     if (!_hasActivity) {
       return _ActivityEmpty(
         title: s.t('activity_empty_title'),
@@ -979,35 +1124,30 @@ class _HomeContentState extends State<HomeContent> {
       );
     }
     return _ActivityList(
-      items: [
-        _ActivityData(
-          icon: Icons.recycling_rounded,
+      items: _activitySummary!.activities.take(3).map((activity) {
+        final category = activity.wasteType.toLowerCase();
+        final icon = switch (category) {
+          'organik' => Icons.eco_rounded,
+          'b3' => Icons.warning_amber_rounded,
+          'anorganik' => Icons.recycling_rounded,
+          _ => Icons.delete_outline_rounded,
+        };
+        final age = DateTime.now().difference(activity.occurredAt).inDays;
+        final time = age <= 0
+            ? s.t('time_today')
+            : age == 1
+                ? s.t('time_yesterday')
+                : '${activity.occurredAt.day} ${activity.occurredAt.month}';
+        return _ActivityData(
+          icon: icon,
           fg: AppColors.primaryGreen,
           bg: AppColors.mint,
-          title: s.t('activity_dropoff'),
-          subtitle: s.t('activity_dropoff_desc'),
-          time: s.t('time_today'),
-          points: '+150',
-        ),
-        _ActivityData(
-          icon: Icons.emoji_events_rounded,
-          fg: _kAmberFg,
-          bg: _kAmberBg,
-          title: s.t('activity_challenge'),
-          subtitle: s.t('activity_challenge_desc'),
-          time: s.t('time_yesterday'),
-          points: '+200',
-        ),
-        _ActivityData(
-          icon: Icons.menu_book_rounded,
-          fg: _kBlueFg,
-          bg: _kBlueBg,
-          title: s.t('activity_learn'),
-          subtitle: s.t('activity_learn_desc'),
-          time: s.t('time_2d'),
-          points: '+50',
-        ),
-      ],
+          title: activity.title,
+          subtitle: activity.subtitle,
+          time: time,
+          points: activity.points == 0 ? '0' : '+${activity.points}',
+        );
+      }).toList(),
     );
   }
 
@@ -1018,26 +1158,49 @@ class _HomeContentState extends State<HomeContent> {
   Widget _buildTips(AppStrings s) {
     return SizedBox(
       height: 200,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: _hPad),
-        itemCount: 2,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
-        itemBuilder: (context, index) {
-          if (index == 0) {
-            return _ArticleCard(
-              title: s.t('article_food'),
-              imageUrl: _imgFood,
-              category: s.t('category_food'),
-              duration: s.t('duration_12'),
+      child: FutureBuilder<List<ArticleMetadata>>(
+        future: _articlesFuture,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(
+              child: TextButton(
+                onPressed: () => setState(
+                  () => _articlesFuture = PilaraApi.instance.articles(),
+                ),
+                child: Text(
+                  s.lang == 0
+                      ? 'Artikel gagal dimuat. Coba lagi.'
+                      : 'Articles failed to load. Retry.',
+                ),
+              ),
             );
           }
-          return _ArticleCard(
-            title: s.t('article_eco'),
-            imageUrl: _imgEcoLiving,
-            category: s.t('category_eco'),
-            duration: s.t('duration_5'),
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final articles = snapshot.data!.take(4).toList();
+          if (articles.isEmpty) {
+            return Center(
+              child: Text(
+                s.lang == 0 ? 'Belum ada artikel.' : 'No articles available.',
+              ),
+            );
+          }
+          return ListView.separated(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: _hPad),
+            itemCount: articles.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              final article = articles[index];
+              return _ArticleCard(
+                title: article.title,
+                imageUrl: article.headerImage,
+                category: article.category,
+                duration: article.readTime,
+              );
+            },
           );
         },
       ),
@@ -1113,19 +1276,28 @@ class _ShortcutGrid extends StatelessWidget {
     final s = AppStrings(lang);
 
     final items = <_ShortcutItem>[
-      _ShortcutItem(Icons.military_tech_rounded, s.t('level_badge'), AppColors.mint, AppColors.primaryGreen),
-      _ShortcutItem(Icons.stars_rounded, s.t('how_to_earn'), AppColors.mint, AppColors.primaryGreen),
-      _ShortcutItem(Icons.redeem_rounded, s.t('redeem'), AppColors.mint, AppColors.primaryGreen),
-      _ShortcutItem(Icons.history_rounded, s.t('history'), AppColors.mint, AppColors.primaryGreen),
-      _ShortcutItem(Icons.calculate_rounded, s.t('impact_calc'), AppColors.mint, AppColors.primaryGreen),
-      _ShortcutItem(Icons.emoji_events_rounded, s.t('challenge'), AppColors.mint, AppColors.primaryGreen),
-      _ShortcutItem(Icons.event_rounded, s.t('agenda'), AppColors.mint, AppColors.primaryGreen),
-      _ShortcutItem(Icons.menu_book_rounded, s.t('guide'), AppColors.mint, AppColors.primaryGreen),
+      _ShortcutItem(Icons.military_tech_rounded, s.t('level_badge'),
+          AppColors.mint, AppColors.primaryGreen),
+      _ShortcutItem(Icons.stars_rounded, s.t('how_to_earn'), AppColors.mint,
+          AppColors.primaryGreen),
+      _ShortcutItem(Icons.redeem_rounded, s.t('redeem'), AppColors.mint,
+          AppColors.primaryGreen),
+      _ShortcutItem(Icons.history_rounded, s.t('history'), AppColors.mint,
+          AppColors.primaryGreen),
+      _ShortcutItem(Icons.calculate_rounded, s.t('impact_calc'), AppColors.mint,
+          AppColors.primaryGreen),
+      _ShortcutItem(Icons.emoji_events_rounded, s.t('challenge'),
+          AppColors.mint, AppColors.primaryGreen),
+      _ShortcutItem(Icons.event_rounded, s.t('agenda'), AppColors.mint,
+          AppColors.primaryGreen),
+      _ShortcutItem(Icons.menu_book_rounded, s.t('guide'), AppColors.mint,
+          AppColors.primaryGreen),
     ];
 
     Widget row(List<_ShortcutItem> rowItems) => Row(
           children: [
-            for (final item in rowItems) Expanded(child: _ShortcutCell(item: item)),
+            for (final item in rowItems)
+              Expanded(child: _ShortcutCell(item: item)),
           ],
         );
 
@@ -1195,10 +1367,8 @@ class _ShortcutCell extends StatelessWidget {
 
 class _SectionHeader extends StatelessWidget {
   final String label;
-  final String? actionLabel;
-  final VoidCallback? onAction;
 
-  const _SectionHeader(this.label, {this.actionLabel, this.onAction});
+  const _SectionHeader(this.label);
 
   @override
   Widget build(BuildContext context) {
@@ -1217,22 +1387,6 @@ class _SectionHeader extends StatelessWidget {
             ),
           ),
         ),
-        if (actionLabel != null)
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: onAction,
-            child: Padding(
-              padding: const EdgeInsets.only(left: 12, top: 4, bottom: 4),
-              child: Text(
-                actionLabel!,
-                style: const TextStyle(
-                  color: AppColors.primaryGreen,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
       ],
     );
   }
@@ -1252,117 +1406,41 @@ class _ChallengeCard extends StatefulWidget {
 }
 
 class _ChallengeCardState extends State<_ChallengeCard> {
-  bool _isJoined = false;
-
   @override
   Widget build(BuildContext context) {
     final s = widget.s;
 
     return Container(
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: _kBorderColor),
       ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          // Foto cup kopi + overlay info
-          SizedBox(
-            height: 132,
-            width: double.infinity,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Image.network(
-                  _imgCoffee,
-                  fit: BoxFit.cover,
-                  loadingBuilder: (context, child, progress) {
-                    if (progress == null) return child;
-                    return Container(color: AppColors.mint);
-                  },
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    color: AppColors.mint,
-                    alignment: Alignment.center,
-                    child: const Icon(
-                      Icons.coffee_rounded,
-                      size: 44,
-                      color: AppColors.primaryGreen,
-                    ),
-                  ),
-                ),
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.center,
-                      colors: [
-                        Colors.black.withValues(alpha: 0.5),
-                        Colors.transparent,
-                      ],
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: 10,
-                  left: 10,
-                  child: _Chip(
-                    icon: Icons.schedule_rounded,
-                    label: s.t('challenge_deadline'),
-                    bg: AppColors.white.withValues(alpha: 0.92),
-                    fg: _kDarkText,
-                  ),
-                ),
-                Positioned(
-                  left: 10,
-                  bottom: 10,
-                  child: Row(
-                    children: [
-                      _Chip(
-                        icon: Icons.bolt_rounded,
-                        label: s.t('challenge_points'),
-                        bg: AppColors.white.withValues(alpha: 0.92),
-                        fg: AppColors.primaryGreen,
-                      ),
-                      const SizedBox(width: 6),
-                      _Chip(
-                        icon: Icons.people_rounded,
-                        label: s.t('challenge_joined'),
-                        bg: AppColors.white.withValues(alpha: 0.92),
-                        fg: AppColors.primaryGreen,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+          const Icon(
+            Icons.emoji_events_outlined,
+            color: AppColors.primaryGreen,
+            size: 30,
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+          const SizedBox(width: 12),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  s.t('challenge_title'),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                  s.t('weekly_challenge'),
                   style: const TextStyle(
-                    fontSize: 17,
-                    height: 1.25,
+                    fontSize: 14,
                     fontWeight: FontWeight.w800,
                     color: _kDarkText,
                   ),
                 ),
-                const SizedBox(height: 12),
-                _AppButton(
-                  label: _isJoined ? s.t('joined') : s.t('join'),
-                  icon: _isJoined ? Icons.check_circle_rounded : null,
-                  background: _isJoined ? AppColors.mint : AppColors.primaryGreen,
-                  foreground: _isJoined ? AppColors.primaryGreen : AppColors.white,
-                  borderColor: _isJoined ? AppColors.primaryGreen : null,
-                  expand: true,
-                  onTap: () => setState(() => _isJoined = !_isJoined),
+                const SizedBox(height: 4),
+                _Chip(
+                  icon: Icons.info_outline_rounded,
+                  label: s.lang == 0 ? 'Belum tersedia' : 'Not available',
                 ),
               ],
             ),
@@ -1376,14 +1454,10 @@ class _ChallengeCardState extends State<_ChallengeCard> {
 class _Chip extends StatelessWidget {
   final IconData icon;
   final String label;
-  final Color bg;
-  final Color fg;
 
   const _Chip({
     required this.icon,
     required this.label,
-    this.bg = AppColors.mint,
-    this.fg = AppColors.primaryGreen,
   });
 
   @override
@@ -1391,20 +1465,20 @@ class _Chip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
-        color: bg,
+        color: AppColors.mint,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 13, color: fg),
+          Icon(icon, size: 13, color: AppColors.primaryGreen),
           const SizedBox(width: 4),
           Text(
             label,
             style: TextStyle(
               fontSize: 10.5,
               fontWeight: FontWeight.w700,
-              color: fg,
+              color: AppColors.primaryGreen,
             ),
           ),
         ],
@@ -1419,38 +1493,42 @@ class _Chip extends StatelessWidget {
 
 enum _EventType { cleanup, workshop, bank }
 
-class _CommunityCard extends StatefulWidget {
-  final String title;
-  final String location;
+class _CommunityCard extends StatelessWidget {
+  final CommunityEvent event;
   final String day;
   final String month;
   final String going;
   final _EventType type;
-  final String? imageUrl; // foto dari penyelenggara; kosong = ilustrasi default
   final String joinLabel;
   final String joinedLabel;
+  final String fullLabel;
+  final bool busy;
+  final VoidCallback onToggle;
 
   const _CommunityCard({
-    required this.title,
-    required this.location,
+    required this.event,
     required this.day,
     required this.month,
     required this.going,
     required this.type,
     required this.joinLabel,
     required this.joinedLabel,
-    this.imageUrl,
+    required this.fullLabel,
+    required this.busy,
+    required this.onToggle,
   });
 
   @override
-  State<_CommunityCard> createState() => _CommunityCardState();
-}
-
-class _CommunityCardState extends State<_CommunityCard> {
-  bool _joined = false;
-
-  @override
   Widget build(BuildContext context) {
+    final isJoined = event.isJoined;
+    final canToggle = isJoined || event.registrationOpen;
+    final actionLabel = busy
+        ? '...'
+        : isJoined
+            ? joinedLabel
+            : event.registrationOpen
+                ? joinLabel
+                : fullLabel;
     return Container(
       width: 260,
       decoration: BoxDecoration(
@@ -1466,7 +1544,7 @@ class _CommunityCardState extends State<_CommunityCard> {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                _EventCover(type: widget.type, imageUrl: widget.imageUrl),
+                _EventCover(type: type, imageUrl: event.coverImage),
                 Positioned(
                   top: 10,
                   left: 10,
@@ -1489,7 +1567,7 @@ class _CommunityCardState extends State<_CommunityCard> {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          '${widget.day} ${widget.month}',
+                          '$day $month',
                           style: const TextStyle(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w800,
@@ -1510,7 +1588,7 @@ class _CommunityCardState extends State<_CommunityCard> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  widget.title,
+                  event.title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -1531,7 +1609,7 @@ class _CommunityCardState extends State<_CommunityCard> {
                     const SizedBox(width: 3),
                     Expanded(
                       child: Text(
-                        widget.location,
+                        event.location,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -1545,11 +1623,9 @@ class _CommunityCardState extends State<_CommunityCard> {
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    const _AvatarStack(),
-                    const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        widget.going,
+                        going,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -1561,15 +1637,21 @@ class _CommunityCardState extends State<_CommunityCard> {
                     ),
                     const SizedBox(width: 8),
                     _AppButton(
-                      label: _joined ? widget.joinedLabel : widget.joinLabel,
-                      background:
-                          _joined ? AppColors.mint : AppColors.primaryGreen,
-                      foreground:
-                          _joined ? AppColors.primaryGreen : AppColors.white,
+                      label: actionLabel,
+                      background: isJoined
+                          ? AppColors.mint
+                          : canToggle
+                              ? AppColors.primaryGreen
+                              : _kGreyBg,
+                      foreground: isJoined
+                          ? AppColors.primaryGreen
+                          : canToggle
+                              ? AppColors.white
+                              : _kMutedText,
                       height: 32,
                       fontSize: 12,
                       radius: 10,
-                      onTap: () => setState(() => _joined = !_joined),
+                      onTap: canToggle && !busy ? onToggle : () {},
                     ),
                   ],
                 ),
@@ -1652,15 +1734,10 @@ class _EventCover extends StatelessWidget {
       ],
     );
 
-    if (imageUrl == null) return illustration;
-
+    if (imageUrl == null || imageUrl!.isEmpty) return illustration;
     return Image.network(
       imageUrl!,
       fit: BoxFit.cover,
-      loadingBuilder: (context, child, progress) {
-        if (progress == null) return child;
-        return illustration;
-      },
       errorBuilder: (context, error, stackTrace) => illustration,
     );
   }
@@ -1727,51 +1804,6 @@ class _CoverPainter extends CustomPainter {
       old.bottom != bottom ||
       old.waveBack != waveBack ||
       old.waveFront != waveFront;
-}
-
-class _AvatarStack extends StatelessWidget {
-  const _AvatarStack();
-
-  static const List<Color> _colors = [
-    Color(0xFFB7E4C7),
-    Color(0xFFFFE0A3),
-    Color(0xFFBFD8FF),
-  ];
-  static const List<String> _initials = ['A', 'R', 'D'];
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 22 + 2 * 14,
-      height: 22,
-      child: Stack(
-        children: [
-          for (int i = 0; i < _colors.length; i++)
-            Positioned(
-              left: i * 14.0,
-              child: Container(
-                width: 22,
-                height: 22,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: _colors[i],
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.white, width: 1.5),
-                ),
-                child: Text(
-                  _initials[i],
-                  style: const TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w800,
-                    color: _kDarkText,
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
 }
 
 // ==================================================================
@@ -2067,9 +2099,8 @@ class _WasteCategoryGrid extends StatelessWidget {
 
 class _WasteCategory extends StatelessWidget {
   final _WasteItem item;
-  final VoidCallback? onTap;
 
-  const _WasteCategory({required this.item, this.onTap});
+  const _WasteCategory({required this.item});
 
   @override
   Widget build(BuildContext context) {
@@ -2080,60 +2111,57 @@ class _WasteCategory extends StatelessWidget {
         side: const BorderSide(color: _kBorderColor),
       ),
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap ?? () {},
-        child: Padding(
-          padding: const EdgeInsets.all(9),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: SizedBox(
-                  width: 52,
-                  height: 52,
-                  child: Image.asset(
-                    item.image,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      color: item.bg,
-                      alignment: Alignment.center,
-                      child: Icon(item.icon, color: item.fg, size: 26),
-                    ),
+      child: Padding(
+        padding: const EdgeInsets.all(9),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                width: 52,
+                height: 52,
+                child: Image.asset(
+                  item.image,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    color: item.bg,
+                    alignment: Alignment.center,
+                    child: Icon(item.icon, color: item.fg, size: 26),
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13,
-                        color: _kDarkText,
-                      ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                      color: _kDarkText,
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      item.subtitle,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 10.5,
-                        height: 1.2,
-                        color: _kMutedText,
-                      ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    item.subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 10.5,
+                      height: 1.2,
+                      color: _kMutedText,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -2218,7 +2246,7 @@ class _ArticleCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {},
+      onTap: () => Navigator.pushNamed(context, AppRouter.articles),
       child: SizedBox(
         width: 220,
         child: Column(
@@ -2270,7 +2298,8 @@ class _ArticleCard extends StatelessWidget {
                     left: 12,
                     bottom: 12,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
                         color: AppColors.white.withValues(alpha: 0.95),
                         borderRadius: BorderRadius.circular(12),
@@ -2324,7 +2353,7 @@ class _ArticleCard extends StatelessWidget {
 }
 
 // ==================================================================
-// CHATBOT & NOTIF SHEET (Tidak Berubah)
+// CHATBOT & NOTIF SHEET
 // ==================================================================
 
 class _ChatbotSheet extends StatefulWidget {
@@ -2338,19 +2367,52 @@ class _ChatbotSheet extends StatefulWidget {
 class _ChatbotSheetState extends State<_ChatbotSheet> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final ImagePicker _imagePicker = ImagePicker();
+  final KebersihanAIService _chatService = KebersihanAIService();
+  final DeteksiSampahService _detectionService = DeteksiSampahService();
   final List<Map<String, dynamic>> _messages = [];
   bool _isTyping = false;
+  String? _setupError;
+  ChatSession? _chat;
 
   @override
   void initState() {
     super.initState();
     final s = AppStrings(widget.lang);
     _messages.add({'text': s.t('chat_welcome'), 'isUser': false});
+    _startChat();
   }
 
-  void _sendMessage() {
+  @override
+  void dispose() {
+    _controller.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _startChat() async {
+    setState(() => _isTyping = true);
+    try {
+      _chat = await _chatService.startChat();
+    } on Exception catch (error) {
+      if (!mounted) return;
+      _setupError = error.toString();
+      _messages.add({
+        'text': '${widget.lang == 0 ? 'Pilala belum siap' : 'Pilala is not ready'}: $error',
+        'isUser': false,
+        'isError': true,
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isTyping = false);
+        _scrollToBottom();
+      }
+    }
+  }
+
+  Future<void> _sendMessage() async {
     final text = _controller.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty || _isTyping || _setupError != null) return;
 
     setState(() {
       _messages.add({'text': text, 'isUser': true});
@@ -2359,15 +2421,124 @@ class _ChatbotSheetState extends State<_ChatbotSheet> {
     });
     _scrollToBottom();
 
-    Future.delayed(const Duration(milliseconds: 800), () {
+    try {
+      final chat = _chat ?? await _chatService.startChat();
+      _chat = chat;
+      final response = await _chatService.sendMessage(chat, text);
       if (!mounted) return;
-      final botResponse = _getBotResponse(text, widget.lang);
       setState(() {
         _isTyping = false;
-        _messages.add({'text': botResponse, 'isUser': false});
+        _messages.add({'text': response, 'isUser': false});
       });
       _scrollToBottom();
-    });
+    } on Exception catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _messages.add({
+          'text': '${widget.lang == 0 ? 'Pesan gagal diproses' : 'Message failed'}: $error',
+          'isUser': false,
+          'isError': true,
+        });
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isTyping = false);
+        _scrollToBottom();
+      }
+    }
+  }
+
+  Future<void> _showImageOptions() async {
+    if (_isTyping || _setupError != null) return;
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Wrap(
+          children: [
+            if (defaultTargetPlatform == TargetPlatform.android ||
+                defaultTargetPlatform == TargetPlatform.iOS)
+              ListTile(
+                leading: const Icon(Icons.camera_alt_outlined),
+                title: Text(widget.lang == 0 ? 'Ambil foto' : 'Take a photo'),
+                onTap: () => Navigator.pop(context, ImageSource.camera),
+              ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: Text(widget.lang == 0 ? 'Pilih dari galeri' : 'Choose photo'),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source != null) await _detectImage(source);
+  }
+
+  Future<void> _detectImage(ImageSource source) async {
+    try {
+      final image = await _imagePicker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 80,
+      );
+      if (image == null) return;
+
+      final bytes = await image.readAsBytes();
+      setState(() {
+        _messages.add({
+          'text': widget.lang == 0
+              ? 'Tolong identifikasi sampah pada foto ini.'
+              : 'Please identify the waste in this photo.',
+          'isUser': true,
+          'imageBytes': bytes,
+        });
+        _isTyping = true;
+      });
+      _scrollToBottom();
+
+      final result = await _detectionService.detectWaste(
+        imageBytes: bytes,
+        mimeType: _mimeType(image.name),
+        respondInEnglish: widget.lang != 0,
+      );
+      if (!mounted) return;
+      setState(() {
+        _messages.add({
+          'text': widget.lang == 0
+              ? 'Nama: ${result.objectName}\n'
+                  'Kategori: ${result.category}\n'
+                  'Cara pengolahan: ${result.processingMethod}'
+              : 'Item: ${result.objectName}\n'
+                  'Category: ${result.category}\n'
+                  'How to handle: ${result.processingMethod}',
+          'isUser': false,
+        });
+      });
+    } on Exception catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _messages.add({
+          'text': '${widget.lang == 0 ? 'Foto gagal dianalisis' : 'Image analysis failed'}: $error',
+          'isUser': false,
+          'isError': true,
+        });
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isTyping = false);
+        _scrollToBottom();
+      }
+    }
+  }
+
+  String _mimeType(String fileName) {
+    final extension = fileName.split('.').last.toLowerCase();
+    return switch (extension) {
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      _ => 'image/jpeg',
+    };
   }
 
   void _scrollToBottom() {
@@ -2380,40 +2551,6 @@ class _ChatbotSheetState extends State<_ChatbotSheet> {
         );
       }
     });
-  }
-
-  String _getBotResponse(String input, int lang) {
-    final lower = input.toLowerCase();
-    final isIndo = lang == 0;
-
-    if (lower.contains('organik') || lower.contains('organic') || lower.contains('sisa makanan')) {
-      return isIndo
-          ? 'Sampah organik seperti sisa makanan, daun, dan kulit buah bisa dijadikan kompos. Buang ke tempat sampah hijau ya!'
-          : 'Organic waste like food scraps, leaves, and fruit peels can be composted. Put them in the green bin!';
-    }
-    if (lower.contains('anorganik') || lower.contains('plastic') || lower.contains('plastik') || lower.contains('botol')) {
-      return isIndo
-          ? 'Sampah anorganik seperti plastik, botol, dan kaleng bisa didaur ulang. Pisahkan dan buang ke tempat sampah biru.'
-          : 'Inorganic waste like plastic, bottles, and cans can be recycled. Separate and put them in the blue bin.';
-    }
-    if (lower.contains('b3') || lower.contains('baterai') || lower.contains('battery') || lower.contains('berbahaya')) {
-      return isIndo
-          ? 'Sampah B3 (Bahan Berbahaya dan Beracun) seperti baterai, lampu, dan obat kadaluarsa harus dibuang ke tempat khusus.'
-          : 'Hazardous waste (B3) like batteries, lamps, and expired medicine must be disposed of at special collection points.';
-    }
-    if (lower.contains('dimana') || lower.contains('where') || lower.contains('lokasi') || lower.contains('location')) {
-      return isIndo
-          ? 'Anda bisa mencari lokasi setor sampah terdekat melalui menu "Cari Titik" di navigasi bawah.'
-          : 'You can find the nearest waste drop-off location via the "Find Point" menu.';
-    }
-    if (lower.contains('poin') || lower.contains('point') || lower.contains('hadiah')) {
-      return isIndo
-          ? 'Kumpulkan poin dengan memilah sampah dan menyelesaikan tantangan mingguan. Poin bisa ditukar dengan hadiah menarik!'
-          : 'Collect points by sorting waste and completing weekly challenges. Points can be redeemed for rewards!';
-    }
-    return isIndo
-        ? 'Maaf, saya belum mengerti. Coba tanya tentang "organik", "anorganik", "B3", atau "lokasi setor".'
-        : 'Sorry, I didn\'t understand. Try asking about "organic", "inorganic", "B3", or "drop-off location".';
   }
 
   @override
@@ -2436,7 +2573,8 @@ class _ChatbotSheetState extends State<_ChatbotSheet> {
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
               decoration: BoxDecoration(
                 border: Border(
-                  bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.15)),
+                  bottom:
+                      BorderSide(color: Colors.grey.withValues(alpha: 0.15)),
                 ),
               ),
               child: Row(
@@ -2483,6 +2621,10 @@ class _ChatbotSheetState extends State<_ChatbotSheet> {
                   return _buildMessageBubble(
                     msg['text'] as String,
                     msg['isUser'] as bool,
+                    imageBytes: msg['imageBytes'] is Uint8List
+                        ? msg['imageBytes'] as Uint8List
+                        : null,
+                    isError: msg['isError'] == true,
                   );
                 },
               ),
@@ -2502,9 +2644,17 @@ class _ChatbotSheetState extends State<_ChatbotSheet> {
               ),
               child: Row(
                 children: [
+                  IconButton(
+                    tooltip: s.lang == 0 ? 'Kirim foto' : 'Send a photo',
+                    onPressed: _isTyping || _setupError != null
+                        ? null
+                        : _showImageOptions,
+                    icon: const Icon(Icons.add_photo_alternate_outlined),
+                  ),
                   Expanded(
                     child: TextField(
                       controller: _controller,
+                      readOnly: _setupError != null,
                       textInputAction: TextInputAction.send,
                       onSubmitted: (_) => _sendMessage(),
                       decoration: InputDecoration(
@@ -2535,7 +2685,8 @@ class _ChatbotSheetState extends State<_ChatbotSheet> {
                     child: IconButton(
                       icon: const Icon(Icons.send_rounded,
                           color: AppColors.white, size: 20),
-                      onPressed: _sendMessage,
+                      onPressed:
+                          _isTyping || _setupError != null ? null : _sendMessage,
                     ),
                   ),
                 ],
@@ -2547,7 +2698,12 @@ class _ChatbotSheetState extends State<_ChatbotSheet> {
     );
   }
 
-  Widget _buildMessageBubble(String text, bool isUser) {
+  Widget _buildMessageBubble(
+    String text,
+    bool isUser, {
+    Uint8List? imageBytes,
+    bool isError = false,
+  }) {
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -2557,7 +2713,11 @@ class _ChatbotSheetState extends State<_ChatbotSheet> {
           maxWidth: MediaQuery.of(context).size.width * 0.75,
         ),
         decoration: BoxDecoration(
-          color: isUser ? AppColors.primaryGreen : AppColors.mint,
+          color: isError
+              ? const Color(0xFFFFEBEE)
+              : isUser
+                  ? AppColors.primaryGreen
+                  : AppColors.mint,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(20),
             topRight: const Radius.circular(20),
@@ -2565,13 +2725,34 @@ class _ChatbotSheetState extends State<_ChatbotSheet> {
             bottomRight: Radius.circular(isUser ? 4 : 20),
           ),
         ),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: isUser ? AppColors.white : _kDarkText,
-            fontSize: 14,
-            height: 1.4,
-          ),
+        child: Column(
+          crossAxisAlignment:
+              isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          children: [
+            if (imageBytes != null) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.memory(
+                  imageBytes,
+                  width: 220,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+            Text(
+              text,
+              style: TextStyle(
+                color: isError
+                    ? Colors.red.shade800
+                    : isUser
+                        ? AppColors.white
+                        : _kDarkText,
+                fontSize: 14,
+                height: 1.4,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -2648,7 +2829,8 @@ class _NotificationSheet extends StatelessWidget {
           const SizedBox(height: 20),
           Row(
             children: [
-              const Icon(Icons.notifications_rounded, color: AppColors.primaryGreen),
+              const Icon(Icons.notifications_rounded,
+                  color: AppColors.primaryGreen),
               const SizedBox(width: 10),
               Text(
                 s.t('notif_title'),

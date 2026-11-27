@@ -16,6 +16,7 @@ class ArticleDetailScreen extends StatelessWidget {
   // ============================================================
 
   Future<void> _openSource() async {
+    if (article.sourceUrl.isEmpty) return;
     final Uri url = Uri.parse(article.sourceUrl);
 
     if (await canLaunchUrl(url)) {
@@ -39,7 +40,6 @@ class ArticleDetailScreen extends StatelessWidget {
         backgroundColor: Colors.white,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-
         leading: IconButton(
           icon: const Icon(
             Icons.arrow_back_ios_new_rounded,
@@ -49,7 +49,6 @@ class ArticleDetailScreen extends StatelessWidget {
             Navigator.pop(context);
           },
         ),
-
         title: const Text(
           'Detail Artikel',
           style: TextStyle(
@@ -58,7 +57,6 @@ class ArticleDetailScreen extends StatelessWidget {
             fontWeight: FontWeight.bold,
           ),
         ),
-
         centerTitle: false,
       ),
 
@@ -77,11 +75,9 @@ class ArticleDetailScreen extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               height: 240,
-
               child: Image.network(
                 article.headerImage,
                 fit: BoxFit.cover,
-
                 errorBuilder: (
                   context,
                   error,
@@ -89,7 +85,6 @@ class ArticleDetailScreen extends StatelessWidget {
                 ) {
                   return Container(
                     color: Colors.green.shade50,
-
                     child: Center(
                       child: Icon(
                         article.icon,
@@ -113,11 +108,8 @@ class ArticleDetailScreen extends StatelessWidget {
                 20,
                 35,
               ),
-
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
-
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // ==================================================
                   // CATEGORY
@@ -128,13 +120,10 @@ class ArticleDetailScreen extends StatelessWidget {
                       horizontal: 11,
                       vertical: 6,
                     ),
-
                     decoration: BoxDecoration(
                       color: Colors.green.shade50,
-                      borderRadius:
-                          BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(20),
                     ),
-
                     child: Text(
                       article.category,
                       style: TextStyle(
@@ -153,7 +142,6 @@ class ArticleDetailScreen extends StatelessWidget {
 
                   Text(
                     article.title,
-
                     style: const TextStyle(
                       fontSize: 26,
                       fontWeight: FontWeight.bold,
@@ -171,7 +159,6 @@ class ArticleDetailScreen extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(
                       vertical: 13,
                     ),
-
                     decoration: BoxDecoration(
                       border: Border(
                         top: BorderSide(
@@ -182,7 +169,6 @@ class ArticleDetailScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-
                     child: Row(
                       children: [
                         // ------------------------------------------------
@@ -195,21 +181,16 @@ class ArticleDetailScreen extends StatelessWidget {
                               Icon(
                                 Icons.person_outline_rounded,
                                 size: 18,
-                                color:
-                                    Colors.grey.shade600,
+                                color: Colors.grey.shade600,
                               ),
-
                               const SizedBox(width: 6),
-
                               Expanded(
                                 child: Text(
                                   article.author,
                                   maxLines: 1,
-                                  overflow:
-                                      TextOverflow.ellipsis,
+                                  overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
-                                    color:
-                                        Colors.grey.shade700,
+                                    color: Colors.grey.shade700,
                                     fontSize: 12,
                                   ),
                                 ),
@@ -227,17 +208,13 @@ class ArticleDetailScreen extends StatelessWidget {
                             Icon(
                               Icons.calendar_today_outlined,
                               size: 15,
-                              color:
-                                  Colors.grey.shade600,
+                              color: Colors.grey.shade600,
                             ),
-
                             const SizedBox(width: 5),
-
                             Text(
                               article.updatedDate,
                               style: TextStyle(
-                                color:
-                                    Colors.grey.shade700,
+                                color: Colors.grey.shade700,
                                 fontSize: 12,
                               ),
                             ),
@@ -260,9 +237,7 @@ class ArticleDetailScreen extends StatelessWidget {
                         size: 16,
                         color: Colors.green.shade700,
                       ),
-
                       const SizedBox(width: 6),
-
                       Text(
                         'Waktu baca: ${article.readTime}',
                         style: TextStyle(
@@ -282,7 +257,6 @@ class ArticleDetailScreen extends StatelessWidget {
 
                   Text(
                     article.introduction,
-
                     style: const TextStyle(
                       fontSize: 16,
                       height: 1.7,
@@ -310,7 +284,6 @@ class ArticleDetailScreen extends StatelessWidget {
 
                   if (article.importantPoints.isNotEmpty) ...[
                     const SizedBox(height: 15),
-
                     const Text(
                       'Poin Penting',
                       style: TextStyle(
@@ -318,63 +291,42 @@ class ArticleDetailScreen extends StatelessWidget {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-
                     const SizedBox(height: 12),
-
                     Container(
                       width: double.infinity,
-
                       padding: const EdgeInsets.all(16),
-
                       decoration: BoxDecoration(
                         color: Colors.green.shade50,
-                        borderRadius:
-                            BorderRadius.circular(18),
+                        borderRadius: BorderRadius.circular(18),
                       ),
-
                       child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
-
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           ...article.importantPoints.map(
                             (point) {
                               return Padding(
-                                padding:
-                                    const EdgeInsets.only(
+                                padding: const EdgeInsets.only(
                                   bottom: 12,
                                 ),
-
                                 child: Row(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Container(
-                                      margin:
-                                          const EdgeInsets.only(
+                                      margin: const EdgeInsets.only(
                                         top: 5,
                                       ),
-
                                       width: 7,
                                       height: 7,
-
-                                      decoration:
-                                          BoxDecoration(
-                                        color: Colors
-                                            .green.shade700,
-                                        shape:
-                                            BoxShape.circle,
+                                      decoration: BoxDecoration(
+                                        color: Colors.green.shade700,
+                                        shape: BoxShape.circle,
                                       ),
                                     ),
-
                                     const SizedBox(width: 10),
-
                                     Expanded(
                                       child: Text(
                                         point,
-                                        style:
-                                            const TextStyle(
+                                        style: const TextStyle(
                                           fontSize: 14,
                                           height: 1.5,
                                         ),
@@ -390,144 +342,112 @@ class ArticleDetailScreen extends StatelessWidget {
                     ),
                   ],
 
-                  const SizedBox(height: 28),
+                  if (article.sourceUrl.isNotEmpty) ...[
+                    const SizedBox(height: 28),
 
-                  // ==================================================
-                  // SOURCE
-                  // ==================================================
+                    // ==================================================
+                    // SOURCE
+                    // ==================================================
 
-                  const Text(
-                    'Sumber',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  Container(
-                    width: double.infinity,
-
-                    padding: const EdgeInsets.all(16),
-
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
-                      borderRadius:
-                          BorderRadius.circular(18),
-                      border: Border.all(
-                        color: Colors.grey.shade200,
+                    const Text(
+                      'Sumber',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
 
-                    child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                    const SizedBox(height: 12),
 
-                      children: [
-                        Row(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
-
-                          children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-
-                              decoration: BoxDecoration(
-                                color:
-                                    Colors.green.shade50,
-                                borderRadius:
-                                    BorderRadius.circular(10),
-                              ),
-
-                              child: Icon(
-                                Icons.language_rounded,
-                                color:
-                                    Colors.green.shade700,
-                              ),
-                            ),
-
-                            const SizedBox(width: 12),
-
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-
-                                children: [
-                                  const Text(
-                                    'Sumber artikel',
-                                    style: TextStyle(
-                                      color: Colors.grey,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-
-                                  const SizedBox(height: 3),
-
-                                  Text(
-                                    article.sourceName,
-                                    style:
-                                        const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight:
-                                          FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: Colors.grey.shade200,
                         ),
-
-                        const SizedBox(height: 14),
-
-                        // ------------------------------------------------
-                        // SOURCE BUTTON
-                        // ------------------------------------------------
-
-                        SizedBox(
-                          width: double.infinity,
-
-                          child: OutlinedButton.icon(
-                            onPressed: _openSource,
-
-                            icon: const Icon(
-                              Icons.open_in_new_rounded,
-                              size: 17,
-                            ),
-
-                            label: const Text(
-                              'Buka sumber artikel',
-                            ),
-
-                            style:
-                                OutlinedButton.styleFrom(
-                              foregroundColor:
-                                  Colors.green.shade700,
-
-                              side: BorderSide(
-                                color:
-                                    Colors.green.shade300,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: Colors.green.shade50,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Icon(
+                                  Icons.language_rounded,
+                                  color: Colors.green.shade700,
+                                ),
                               ),
-
-                              shape:
-                                  RoundedRectangleBorder(
-                                borderRadius:
-                                    BorderRadius.circular(12),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Sumber artikel',
+                                      style: TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      article.sourceName,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
+                            ],
+                          ),
 
-                              padding:
-                                  const EdgeInsets.symmetric(
-                                vertical: 12,
+                          const SizedBox(height: 14),
+
+                          // ------------------------------------------------
+                          // SOURCE BUTTON
+                          // ------------------------------------------------
+
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: _openSource,
+                              icon: const Icon(
+                                Icons.open_in_new_rounded,
+                                size: 17,
+                              ),
+                              label: const Text(
+                                'Buka sumber artikel',
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.green.shade700,
+                                side: BorderSide(
+                                  color: Colors.green.shade300,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
 
                   const SizedBox(height: 25),
 
@@ -566,11 +486,8 @@ class _ArticleSectionWidget extends StatelessWidget {
       padding: const EdgeInsets.only(
         bottom: 25,
       ),
-
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
-
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ========================================================
           // SECTION TITLE
@@ -578,7 +495,6 @@ class _ArticleSectionWidget extends StatelessWidget {
 
           Text(
             section.title,
-
             style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -594,7 +510,6 @@ class _ArticleSectionWidget extends StatelessWidget {
 
           Text(
             section.content,
-
             style: const TextStyle(
               fontSize: 15,
               height: 1.7,

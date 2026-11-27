@@ -1,4 +1,9 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+
+import '../services/pilara_api.dart';
+import '../services/google_auth_service.dart';
 import 'signup_screen.dart';
 import 'home_screen.dart';
 
@@ -14,7 +19,9 @@ const Color _kMutedText = Color(0xFF6B7A72);
 const Color _kGoogleRed = Color(0xFFDB4437);
 
 class SignInScreen extends StatefulWidget {
-  const SignInScreen({super.key});
+  const SignInScreen({super.key, this.initialMessage});
+
+  final String? initialMessage;
 
   @override
   State<SignInScreen> createState() => _SignInScreenState();
@@ -28,13 +35,27 @@ class _SignInScreenState extends State<SignInScreen> {
   bool _isLoading = false;
 
   @override
+  void initState() {
+    super.initState();
+    final message = widget.initialMessage;
+    if (message != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+      });
+    }
+  }
+
+  @override
   void dispose() {
     emailController.dispose();
     passwordController.dispose();
     super.dispose();
   }
 
-  void login() {
+  Future<void> login() async {
     if (!_formKey.currentState!.validate()) return;
 
     final email = emailController.text.trim();
@@ -49,25 +70,63 @@ class _SignInScreenState extends State<SignInScreen> {
 
     setState(() => _isLoading = true);
 
-    // Simulasi loading
-    Future.delayed(const Duration(seconds: 1), () {
+    try {
+      await PilaraApi.instance.login(email: email, password: password);
       if (!mounted) return;
       setState(() => _isLoading = false);
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const HomeScreen()),
       );
-    });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal masuk: $error')),
+      );
+    }
   }
 
-  void _loginWithGoogle() {
-    // Dummy action untuk Google Sign-In
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Fitur Login Google akan segera hadir!'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  Future<void> _loginWithGoogle() async {
+    if (_isLoading) return;
+    setState(() => _isLoading = true);
+    try {
+      final idToken =
+          await GoogleAuthService.instance.signInAndGetFirebaseIdToken();
+      await PilaraApi.instance.loginWithGoogle(firebaseIdToken: idToken);
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+    } on GoogleSignInException catch (error) {
+      if (!mounted || error.code == GoogleSignInExceptionCode.canceled) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.description ?? 'Login Google gagal.')),
+      );
+    } on FirebaseAuthException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message ?? 'Login Firebase gagal.')),
+      );
+    } on GoogleAuthFlowException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } on Exception catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Login Google gagal: $error')),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -135,7 +194,8 @@ class _SignInScreenState extends State<SignInScreen> {
                     decoration: InputDecoration(
                       labelText: 'Email',
                       hintText: 'nama@email.com',
-                      prefixIcon: const Icon(Icons.email_outlined, color: _kPrimaryGreen),
+                      prefixIcon: const Icon(Icons.email_outlined,
+                          color: _kPrimaryGreen),
                       filled: true,
                       fillColor: _kSageBg,
                       border: OutlineInputBorder(
@@ -148,7 +208,8 @@ class _SignInScreenState extends State<SignInScreen> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: _kPrimaryGreen, width: 1.5),
+                        borderSide:
+                            const BorderSide(color: _kPrimaryGreen, width: 1.5),
                       ),
                     ),
                     validator: (value) {
@@ -170,7 +231,8 @@ class _SignInScreenState extends State<SignInScreen> {
                     style: const TextStyle(fontSize: 15),
                     decoration: InputDecoration(
                       labelText: 'Password',
-                      prefixIcon: const Icon(Icons.lock_outline, color: _kPrimaryGreen),
+                      prefixIcon:
+                          const Icon(Icons.lock_outline, color: _kPrimaryGreen),
                       filled: true,
                       fillColor: _kSageBg,
                       border: OutlineInputBorder(
@@ -183,15 +245,19 @@ class _SignInScreenState extends State<SignInScreen> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: _kPrimaryGreen, width: 1.5),
+                        borderSide:
+                            const BorderSide(color: _kPrimaryGreen, width: 1.5),
                       ),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                          isPasswordVisible
+                              ? Icons.visibility
+                              : Icons.visibility_off,
                           color: _kMutedText,
                         ),
                         onPressed: () {
-                          setState(() => isPasswordVisible = !isPasswordVisible);
+                          setState(
+                              () => isPasswordVisible = !isPasswordVisible);
                         },
                       ),
                     ),
@@ -277,7 +343,7 @@ class _SignInScreenState extends State<SignInScreen> {
                   SizedBox(
                     height: 52,
                     child: OutlinedButton(
-                      onPressed: _loginWithGoogle,
+                      onPressed: _isLoading ? null : _loginWithGoogle,
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: _kBorderColor),
                         shape: RoundedRectangleBorder(
@@ -333,7 +399,8 @@ class _SignInScreenState extends State<SignInScreen> {
                         onPressed: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => const SignUpScreen()),
+                            MaterialPageRoute(
+                                builder: (context) => const SignUpScreen()),
                           );
                         },
                         child: const Text(
