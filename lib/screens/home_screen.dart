@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-
+import 'dart:io';
 import '../core/theme/app_colors.dart';
-import '../data/dummy_home.dart';
+
 import '../data/dummy_articles.dart';
 import '../routers/app_router.dart';
 import 'camera_screen.dart';
@@ -669,111 +669,134 @@ class _HomeContentState extends State<HomeContent> {
     );
   }
 
-  Widget _buildHeader(AppStrings s) {
-    return Row(
-      children: [
-        Container(
-          width: 46,
-          height: 46,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            color: AppColors.mint,
+Widget _buildHeader(AppStrings s) {
+  return ListenableBuilder(
+    listenable: profileStore,
+    builder: (context, _) {
+      final imagePath = profileStore.imagePath;
+
+      return Row(
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.mint,
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: imagePath != null && imagePath.isNotEmpty
+                ? Image.file(
+                    File(imagePath),
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Icon(
+                        Icons.person_rounded,
+                        color: AppColors.primaryGreen,
+                        size: 26,
+                      );
+                    },
+                  )
+                : const Icon(
+                    Icons.person_rounded,
+                    color: AppColors.primaryGreen,
+                    size: 26,
+                  ),
           ),
-          clipBehavior: Clip.antiAlias,
-          child: Image.network(
-            'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=150&auto=format&fit=crop',
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) => const Icon(
-              Icons.person_rounded,
-              color: AppColors.primaryGreen,
-              size: 26,
+
+          const SizedBox(width: 12),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Halo, ${profileStore.name}!',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: _kMutedText,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _greeting(s),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    color: _kDarkText,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Halo, Charlotte!',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: _kMutedText,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                _greeting(s),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 18,
-                  color: _kDarkText,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Tooltip(
-          message: 'Tanya Pilara',
-          child: _headerIconButton(
-            onTap: () {
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (context) => _ChatbotSheet(lang: appLanguage.value),
-              );
-            },
-            child: const Icon(
-              Icons.smart_toy_outlined,
-              color: AppColors.primaryGreen,
-              size: 22,
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        _headerIconButton(
-          onTap: () {
-            showModalBottomSheet(
-              context: context,
-              backgroundColor: Colors.transparent,
-              builder: (context) => _NotificationSheet(s: s),
-            );
-          },
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              const Icon(
-                Icons.notifications_none_rounded,
+
+          Tooltip(
+            message: 'Tanya Pilara',
+            child: _headerIconButton(
+              onTap: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (context) =>
+                      _ChatbotSheet(lang: appLanguage.value),
+                );
+              },
+              child: const Icon(
+                Icons.smart_toy_outlined,
                 color: AppColors.primaryGreen,
                 size: 22,
               ),
-              Positioned(
-                top: 10,
-                right: 11,
-                child: Container(
-                  width: 9,
-                  height: 9,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEF4444),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.white, width: 1.5),
+            ),
+          ),
+
+          const SizedBox(width: 8),
+
+          _headerIconButton(
+            onTap: () {
+              showModalBottomSheet(
+                context: context,
+                backgroundColor: Colors.transparent,
+                builder: (context) => _NotificationSheet(s: s),
+              );
+            },
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                const Icon(
+                  Icons.notifications_none_rounded,
+                  color: AppColors.primaryGreen,
+                  size: 22,
+                ),
+                Positioned(
+                  top: 10,
+                  right: 11,
+                  child: Container(
+                    width: 9,
+                    height: 9,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEF4444),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: AppColors.white,
+                        width: 1.5,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ],
-    );
-  }
-
+        ],
+      );
+    },
+  );
+}
   // ----------------------------------------------------------------
   // HERO CARD (poin + progress + statistik + tombol scan)
   // ----------------------------------------------------------------

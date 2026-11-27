@@ -5,7 +5,6 @@ import '../data/dummy_articles.dart';
 
 import '../screens/splash_screen.dart';
 import '../screens/signin_screen.dart';
-import '../screens/signup_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/camera_screen.dart';
 import '../screens/pilah_screen.dart';
@@ -42,12 +41,6 @@ class AppRouter {
         return MaterialPageRoute(
           settings: settings,
           builder: (_) => const SignInScreen(),
-        );
-
-      case signup:
-        return MaterialPageRoute(
-          settings: settings,
-          builder: (_) => const SignUpScreen(),
         );
 
       case home:

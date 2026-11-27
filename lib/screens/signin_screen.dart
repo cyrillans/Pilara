@@ -1,10 +1,10 @@
+
 import 'package:flutter/material.dart';
-import 'signup_screen.dart';
 import 'home_screen.dart';
 
-// ==================================================================
-// PALET WARNA (Selaras dengan Home Screen)
-// ==================================================================
+// ======================================================
+// PALET WARNA PILARA
+// ======================================================
 
 const Color _kPrimaryGreen = Color(0xFF1B5E3A);
 const Color _kSageBg = Color(0xFFF4F9F6);
@@ -13,59 +13,25 @@ const Color _kDarkText = Color(0xFF1F2A24);
 const Color _kMutedText = Color(0xFF6B7A72);
 const Color _kGoogleRed = Color(0xFFDB4437);
 
-class SignInScreen extends StatefulWidget {
+// ======================================================
+// SIGN IN SCREEN
+// ======================================================
+
+class SignInScreen extends StatelessWidget {
   const SignInScreen({super.key});
 
-  @override
-  State<SignInScreen> createState() => _SignInScreenState();
-}
+  void _continueWithGoogle(BuildContext context) {
+    // PROTOTIPE:
+    // Untuk sementara, tombol Google langsung menuju
+    // halaman pengisian nama panggilan.
+    //
+    // Nantinya bagian ini diganti dengan Google Sign-In
+    // menggunakan Firebase Authentication.
 
-class _SignInScreenState extends State<SignInScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final emailController = TextEditingController();
-  final passwordController = TextEditingController();
-  bool isPasswordVisible = false;
-  bool _isLoading = false;
-
-  @override
-  void dispose() {
-    emailController.dispose();
-    passwordController.dispose();
-    super.dispose();
-  }
-
-  void login() {
-    if (!_formKey.currentState!.validate()) return;
-
-    final email = emailController.text.trim();
-    final password = passwordController.text.trim();
-
-    if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Email dan password wajib diisi')),
-      );
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    // Simulasi loading
-    Future.delayed(const Duration(seconds: 1), () {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-      );
-    });
-  }
-
-  void _loginWithGoogle() {
-    // Dummy action untuk Google Sign-In
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Fitur Login Google akan segera hadir!'),
-        behavior: SnackBarBehavior.floating,
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const CompleteProfileScreen(),
       ),
     );
   }
@@ -77,278 +43,351 @@ class _SignInScreenState extends State<SignInScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // LOGO
-                  Center(
-                    child: Image.asset(
-                      'assets/images/LogoPilara.png',
-                      height: 90,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        height: 90,
-                        width: 90,
-                        decoration: BoxDecoration(
-                          color: _kSageBg,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Icon(
-                          Icons.eco_rounded,
-                          size: 50,
-                          color: _kPrimaryGreen,
-                        ),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 28,
+              vertical: 24,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // LOGO
+                Image.asset(
+                  'assets/images/LogoPilara.png',
+                  height: 105,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      height: 100,
+                      width: 100,
+                      decoration: BoxDecoration(
+                        color: _kSageBg,
+                        borderRadius: BorderRadius.circular(24),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
+                      child: const Icon(
+                        Icons.eco_rounded,
+                        size: 55,
+                        color: _kPrimaryGreen,
+                      ),
+                    );
+                  },
+                ),
 
-                  // TITLE
-                  const Text(
-                    'Selamat Datang Kembali',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      color: _kDarkText,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Masuk untuk melanjutkan aksi hijau Anda',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: _kMutedText,
-                    ),
-                  ),
-                  const SizedBox(height: 32),
+                const SizedBox(height: 32),
 
-                  // EMAIL
-                  TextFormField(
-                    controller: emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    style: const TextStyle(fontSize: 15),
-                    decoration: InputDecoration(
-                      labelText: 'Email',
-                      hintText: 'nama@email.com',
-                      prefixIcon: const Icon(Icons.email_outlined, color: _kPrimaryGreen),
-                      filled: true,
-                      fillColor: _kSageBg,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide.none,
+                const Text(
+                  'Selamat Datang di Pilara',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 25,
+                    fontWeight: FontWeight.w800,
+                    color: _kDarkText,
+                  ),
+                ),
+
+                const SizedBox(height: 10),
+
+                const Text(
+                  'Mulai langkah kecil untuk bumi yang lebih baik.\n'
+                  'Kelola sampah, pelajari kebiasaan baik,\n'
+                  'dan ciptakan perubahan bersama Pilara.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    height: 1.6,
+                    color: _kMutedText,
+                  ),
+                ),
+
+                const SizedBox(height: 42),
+
+                // GOOGLE SIGN IN
+                SizedBox(
+                  width: double.infinity,
+                  height: 54,
+                  child: OutlinedButton(
+                    onPressed: () => _continueWithGoogle(context),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      side: const BorderSide(
+                        color: _kBorderColor,
                       ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: _kBorderColor),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: _kPrimaryGreen, width: 1.5),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
                       ),
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Email tidak boleh kosong';
-                      }
-                      if (!value.contains('@')) {
-                        return 'Format email tidak valid';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  // PASSWORD
-                  TextFormField(
-                    controller: passwordController,
-                    obscureText: !isPasswordVisible,
-                    style: const TextStyle(fontSize: 15),
-                    decoration: InputDecoration(
-                      labelText: 'Password',
-                      prefixIcon: const Icon(Icons.lock_outline, color: _kPrimaryGreen),
-                      filled: true,
-                      fillColor: _kSageBg,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide.none,
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: _kBorderColor),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: _kPrimaryGreen, width: 1.5),
-                      ),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          isPasswordVisible ? Icons.visibility : Icons.visibility_off,
-                          color: _kMutedText,
-                        ),
-                        onPressed: () {
-                          setState(() => isPasswordVisible = !isPasswordVisible);
-                        },
-                      ),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Password tidak boleh kosong';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 8),
-
-                  // LUPA PASSWORD
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () {},
-                      child: const Text(
-                        'Lupa Password?',
-                        style: TextStyle(
-                          color: _kPrimaryGreen,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // SIGN IN BUTTON
-                  SizedBox(
-                    height: 52,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : login,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _kPrimaryGreen,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2.5,
-                              ),
-                            )
-                          : const Text(
-                              'Masuk',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // DIVIDER
-                  Row(
-                    children: [
-                      const Expanded(child: Divider(color: _kBorderColor)),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'atau',
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Text(
+                          'G',
                           style: TextStyle(
-                            color: _kMutedText,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
+                            color: _kGoogleRed,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
                           ),
                         ),
-                      ),
-                      const Expanded(child: Divider(color: _kBorderColor)),
-                    ],
+                        SizedBox(width: 12),
+                        Text(
+                          'Lanjutkan dengan Google',
+                          style: TextStyle(
+                            color: _kDarkText,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 24),
+                ),
 
-                  // GOOGLE SIGN IN BUTTON
-                  SizedBox(
-                    height: 52,
-                    child: OutlinedButton(
-                      onPressed: _loginWithGoogle,
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: _kBorderColor),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        backgroundColor: Colors.white,
+                const SizedBox(height: 22),
+
+                const Text(
+                  'Dengan melanjutkan, kamu dapat mulai '
+                  'berkontribusi bersama Pilara.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: _kMutedText,
+                  ),
+                ),
+
+                const SizedBox(height: 55),
+
+                const Text(
+                  'PILARA • Peduli Lingkungan, Mulai dari Kita',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: _kMutedText,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ======================================================
+// COMPLETE PROFILE SCREEN
+// ======================================================
+
+class CompleteProfileScreen extends StatefulWidget {
+  const CompleteProfileScreen({super.key});
+
+  @override
+  State<CompleteProfileScreen> createState() =>
+      _CompleteProfileScreenState();
+}
+
+class _CompleteProfileScreenState
+    extends State<CompleteProfileScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _nicknameController = TextEditingController();
+
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _nicknameController.dispose();
+    super.dispose();
+  }
+
+  void _continueToHome() {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    // PROTOTIPE:
+    // Nantinya nama panggilan dan data akun Google
+    // disimpan ke database.
+
+    Future.delayed(const Duration(milliseconds: 700), () {
+      if (!mounted) return;
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const HomeScreen(),
+        ),
+        (route) => false,
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        foregroundColor: _kDarkText,
+        automaticallyImplyLeading: true,
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 20,
+          ),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 25),
+
+                // ICON
+                Center(
+                  child: Container(
+                    height: 85,
+                    width: 85,
+                    decoration: BoxDecoration(
+                      color: _kSageBg,
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: const Icon(
+                      Icons.person_outline_rounded,
+                      size: 45,
+                      color: _kPrimaryGreen,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 30),
+
+                const Text(
+                  'Kenalan Dulu, Yuk!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 25,
+                    fontWeight: FontWeight.w800,
+                    color: _kDarkText,
+                  ),
+                ),
+
+                const SizedBox(height: 10),
+
+                const Text(
+                  'Bagaimana kami bisa memanggilmu?\n'
+                  'Masukkan nama panggilan yang kamu sukai.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    height: 1.6,
+                    color: _kMutedText,
+                  ),
+                ),
+
+                const SizedBox(height: 40),
+
+                const Text(
+                  'Nama Panggilan',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: _kDarkText,
+                  ),
+                ),
+
+                const SizedBox(height: 10),
+
+                TextFormField(
+                  controller: _nicknameController,
+                  textCapitalization: TextCapitalization.words,
+                  maxLength: 20,
+                  decoration: InputDecoration(
+                    hintText: 'Contoh: Rara',
+                    counterText: '',
+                    prefixIcon: const Icon(
+                      Icons.person_outline,
+                      color: _kPrimaryGreen,
+                    ),
+                    filled: true,
+                    fillColor: _kSageBg,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(
+                        color: _kBorderColor,
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          // Ikon Google (menggunakan huruf G berwarna)
-                          Container(
-                            width: 24,
-                            height: 24,
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(
+                        color: _kPrimaryGreen,
+                        width: 1.5,
+                      ),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Nama panggilan tidak boleh kosong';
+                    }
+
+                    if (value.trim().length < 2) {
+                      return 'Nama minimal 2 karakter';
+                    }
+
+                    return null;
+                  },
+                ),
+
+                const SizedBox(height: 30),
+
+                SizedBox(
+                  height: 54,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _continueToHome,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _kPrimaryGreen,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 23,
+                            width: 23,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2.5,
                             ),
-                            child: const Center(
-                              child: Text(
-                                'G',
-                                style: TextStyle(
-                                  color: _kGoogleRed,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 18,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          const Text(
-                            'Masuk dengan Google',
+                          )
+                        : const Text(
+                            'Mulai Menggunakan Pilara',
                             style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: _kDarkText,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
-                        ],
-                      ),
-                    ),
                   ),
-                  const SizedBox(height: 32),
+                ),
 
-                  // SIGN UP LINK
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text(
-                        'Belum punya akun?',
-                        style: TextStyle(color: _kMutedText, fontSize: 14),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => const SignUpScreen()),
-                          );
-                        },
-                        child: const Text(
-                          'Daftar Sekarang',
-                          style: TextStyle(
-                            color: _kPrimaryGreen,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
-                    ],
+                const SizedBox(height: 20),
+
+                const Text(
+                  'Kamu bisa mulai menjelajahi Pilara '
+                  'dan membangun kebiasaan ramah lingkungan.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.5,
+                    color: _kMutedText,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
